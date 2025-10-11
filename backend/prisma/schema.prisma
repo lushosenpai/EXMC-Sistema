@@ -75,20 +75,21 @@ model Product {
 
 // Modelo de Clientes
 model Customer {
-  id              String        @id @default(uuid())
+  id              String              @id @default(uuid())
   name            String
   phone           String?
   email           String?
   address         String?
-  cuitDni         String?       @unique
-  accountType     AccountType   @default(EFECTIVO)
-  creditLimit     Float         @default(0)
-  currentBalance  Float         @default(0)
-  observations    String?       @db.Text
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  cuitDni         String?             @unique
+  accountType     AccountType         @default(EFECTIVO)
+  creditLimit     Float               @default(0)
+  currentBalance  Float               @default(0)
+  observations    String?             @db.Text
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   sales           Sale[]
+  accountPayments CustomerPayment[]
 
   @@map("customers")
 }
@@ -96,6 +97,21 @@ model Customer {
 enum AccountType {
   EFECTIVO
   CUENTA_CORRIENTE
+}
+
+// Modelo de Pagos de Cuenta Corriente de Clientes
+model CustomerPayment {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  amount      Float
+  paymentMethod String
+  reference   String?
+  description String?
+  createdAt   DateTime @default(now())
+  createdBy   String?
+
+  @@map("customer_payments")
 }
 
 // Modelo de Ventas
@@ -111,7 +127,9 @@ model Sale {
   discount      Float        @default(0)
   extraPercent  Float        @default(0)
   total         Float
-  paymentMethod PaymentMethod
+  paymentMethod PaymentMethod?
+  amountPaid    Float?
+  change        Float?
   status        SaleStatus   @default(COMPLETADA)
   observations  String?      @db.Text
   createdAt     DateTime     @default(now())

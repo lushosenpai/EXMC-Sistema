@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiUser, FiSave } from 'react-icons/fi';
+import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiUser, FiSave, FiDollarSign } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { customerApi, Customer } from '../api';
 import Modal from '../components/common/Modal';
+import CustomerAccountModal from '../components/customers/CustomerAccountModal';
 
 const CustomersPageFull = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [selectedCustomerAccount, setSelectedCustomerAccount] = useState<Customer | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -272,6 +274,15 @@ const CustomersPageFull = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
+                        {customer.accountType === 'CUENTA_CORRIENTE' && (
+                          <button 
+                            onClick={() => setSelectedCustomerAccount(customer)} 
+                            className="p-2 text-warning hover:bg-warning/10 rounded-lg"
+                            title="Ver cuenta corriente"
+                          >
+                            <FiDollarSign className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => openEditModal(customer)} className="p-2 text-primary hover:bg-primary/10 rounded-lg">
                           <FiEdit2 className="w-4 h-4" />
                         </button>
@@ -427,6 +438,14 @@ const CustomersPageFull = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Cuenta Corriente */}
+      {selectedCustomerAccount && (
+        <CustomerAccountModal
+          customer={selectedCustomerAccount}
+          onClose={() => setSelectedCustomerAccount(null)}
+        />
+      )}
     </div>
   );
 };

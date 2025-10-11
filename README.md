@@ -22,14 +22,19 @@
 
 ### 🎯 Características Principales
 
-✅ **Punto de Venta (POS)** - Sistema de ventas rápido e intuitivo  
-✅ **Gestión de Inventario** - Control total de productos y stock  
-✅ **Facturación PDF** - Generación automática de facturas  
+✅ **Punto de Venta (POS)** - Sistema de ventas rápido con múltiples métodos de pago  
+✅ **Gestión de Inventario** - Control total de productos, stock y movimientos  
+✅ **Gestión de Usuarios** - CRUD completo con roles y permisos  
+✅ **Facturación PDF** - Generación automática de facturas y recibos  
 ✅ **Dashboard Analytics** - Estadísticas y gráficos en tiempo real  
 ✅ **Multi-usuario** - Sistema de roles (Admin, Vendedor, Consulta)  
-✅ **Cuenta Corriente** - Gestión de créditos de clientes  
+✅ **Cuenta Corriente** - Gestión de créditos y pagos de clientes  
+✅ **Reportes Avanzados** - Análisis de ventas, productos y métodos de pago  
 ✅ **Alertas de Stock** - Notificaciones de productos bajos  
+✅ **Configuración del Sistema** - Personalización completa de la empresa  
+✅ **Protección de Rutas** - Seguridad por roles de usuario  
 ✅ **Tema Oscuro** - Interfaz moderna y profesional  
+✅ **Múltiples Pagos** - Una venta con varios métodos de pago  
 
 ---
 
@@ -101,6 +106,31 @@ Abrir navegador: **http://localhost:5173**
 | [⚡ INICIO-RAPIDO.md](INICIO-RAPIDO.md) | Comandos útiles y soluciones rápidas |
 | [✨ CARACTERISTICAS.md](CARACTERISTICAS.md) | Lista completa de funcionalidades |
 | [📂 ESTRUCTURA.md](ESTRUCTURA.md) | Estructura del proyecto y archivos |
+| [🇦🇷 INTEGRACION-AFIP-MERCADOPAGO.md](INTEGRACION-AFIP-MERCADOPAGO.md) | Guía técnica para facturación electrónica y cobros |
+| [🚀 ACTIVACION.md](ACTIVACION.md) | **NUEVO**: Activar AFIP y Mercado Pago paso a paso |
+
+---
+
+## 🇦🇷 Facturación Electrónica y Cobros (PREPARADO)
+
+El sistema está **listo para integrarse** con:
+
+### ✅ AFIP - Facturación Electrónica
+- 📋 Estructura implementada
+- 🔐 Configuración de certificados preparada
+- 📄 Generación de CAE y códigos QR
+- 📊 Todos los tipos de comprobantes
+- **Guía**: Ver `ACTIVACION.md`
+
+### ✅ Mercado Pago - Cobros Online
+- 💳 Tarjetas de crédito/débito
+- 🏦 Transferencias bancarias
+- 📱 Código QR
+- 🔔 Webhooks configurados
+- **Guía**: Ver `ACTIVACION.md`
+
+**📌 Estado**: Código implementado, faltan credenciales
+**⏱️ Tiempo de activación**: 30 min (Mercado Pago) + 1-2 semanas (AFIP)
 
 ---
 

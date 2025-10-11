@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "sales" ADD COLUMN     "amountPaid" DOUBLE PRECISION,
+ADD COLUMN     "change" DOUBLE PRECISION,
+ALTER COLUMN "paymentMethod" DROP NOT NULL;

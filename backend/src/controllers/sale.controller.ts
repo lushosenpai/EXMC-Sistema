@@ -118,6 +118,7 @@ export const getSales = async (
               },
             },
           },
+          payments: true,
         },
       }),
       prisma.sale.count({ where }),
@@ -194,11 +195,41 @@ export const createSale = async (
       extraPercent,
       total,
       paymentMethod,
+      payments,
+      amountPaid,
+      change,
       observations,
     } = req.body;
 
     if (!items || items.length === 0) {
       throw new ValidationError('Debe agregar al menos un producto');
+    }
+
+    // Validar pagos
+    let paymentData: any[] = [];
+    
+    if (payments && payments.length > 0) {
+      // Múltiples métodos de pago
+      const totalPayments = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+      
+      if (Math.abs(totalPayments - parseFloat(total)) > 0.01) {
+        throw new ValidationError('La suma de los pagos no coincide con el total de la venta');
+      }
+      
+      paymentData = payments.map((p: any) => ({
+        amount: parseFloat(p.amount),
+        paymentMethod: p.method || p.paymentMethod, // Acepta ambos formatos
+        reference: p.reference || null,
+      }));
+    } else if (paymentMethod) {
+      // Un solo método de pago (retrocompatibilidad)
+      paymentData = [{
+        amount: parseFloat(total),
+        paymentMethod,
+        reference: null,
+      }];
+    } else {
+      throw new ValidationError('Debe especificar al menos un método de pago');
     }
 
     // Verificar stock de productos
@@ -232,7 +263,7 @@ export const createSale = async (
         discount: parseFloat(discount) || 0,
         extraPercent: parseFloat(extraPercent) || 0,
         total: parseFloat(total),
-        paymentMethod,
+        paymentMethod: paymentMethod || null,
         status: 'COMPLETADA',
         observations,
         items: {
@@ -244,10 +275,7 @@ export const createSale = async (
           })),
         },
         payments: {
-          create: {
-            amount: parseFloat(total),
-            paymentMethod,
-          },
+          create: paymentData,
         },
       },
       include: {
@@ -263,6 +291,7 @@ export const createSale = async (
             product: true,
           },
         },
+        payments: true,
       },
     });
 

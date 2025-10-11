@@ -30,9 +30,14 @@ interface Sale {
     name: string;
   };
   total: number;
-  paymentMethod: string;
+  paymentMethod?: string;
   status: string;
   items: SaleItem[];
+  payments?: Array<{
+    id: string;
+    method: string;
+    amount: number;
+  }>;
 }
 
 const salesApi = {
@@ -102,15 +107,16 @@ const SalesPage = () => {
     const labels: Record<string, string> = {
       EFECTIVO: 'Efectivo',
       TRANSFERENCIA: 'Transferencia',
-      TARJETA: 'Tarjeta',
+      TARJETA_CREDITO: 'T. Crédito',
+      TARJETA_DEBITO: 'T. Débito',
       CUENTA_CORRIENTE: 'Cta. Cte.',
+      TARJETA: 'Tarjeta',
     };
     return labels[method] || method;
   };
 
   const handleViewDetails = (sale: Sale) => {
-    setSelectedSale(sale);
-    setShowDetailsModal(true);
+    navigate(`/sales/${sale.id}`);
   };
 
   const closeModal = () => {
@@ -227,7 +233,20 @@ const SalesPage = () => {
                       <div className="text-xs text-dark-textSecondary">{sale.items.length} items</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-white">{getPaymentMethodLabel(sale.paymentMethod)}</div>
+                      {sale.payments && sale.payments.length > 0 ? (
+                        <div className="text-sm">
+                          {sale.payments.map((payment) => (
+                            <div key={payment.id} className="text-white">
+                              {getPaymentMethodLabel(payment.method)}
+                              {sale.payments!.length > 1 && <span className="text-dark-textSecondary ml-1">(${payment.amount.toFixed(2)})</span>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-white">
+                          {sale.paymentMethod ? getPaymentMethodLabel(sale.paymentMethod) : 'No especificado'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${getStatusColor(sale.status)}`}>
@@ -315,8 +334,27 @@ const SalesPage = () => {
                     <div className="text-lg font-semibold text-white">{selectedSale.user.name}</div>
                   </div>
                   <div className="bg-dark-bg rounded-lg p-4">
-                    <div className="text-sm text-dark-textSecondary mb-1">Método de Pago</div>
-                    <div className="text-lg font-semibold text-white">{getPaymentMethodLabel(selectedSale.paymentMethod)}</div>
+                    <div className="text-sm text-dark-textSecondary mb-1">
+                      {selectedSale.payments && selectedSale.payments.length > 0 ? 'Métodos de Pago' : 'Método de Pago'}
+                    </div>
+                    {selectedSale.payments && selectedSale.payments.length > 0 ? (
+                      <div className="space-y-1">
+                        {selectedSale.payments.map((payment) => (
+                          <div key={payment.id} className="flex justify-between items-center">
+                            <span className="text-white font-semibold">
+                              {getPaymentMethodLabel(payment.method)}
+                            </span>
+                            <span className="text-success font-semibold">
+                              ${payment.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-lg font-semibold text-white">
+                        {selectedSale.paymentMethod ? getPaymentMethodLabel(selectedSale.paymentMethod) : 'No especificado'}
+                      </div>
+                    )}
                   </div>
                   <div className="bg-dark-bg rounded-lg p-4">
                     <div className="text-sm text-dark-textSecondary mb-1">Estado</div>

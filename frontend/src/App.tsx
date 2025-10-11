@@ -13,6 +13,14 @@ import SuppliersPage from './pages/SuppliersPage';
 import CustomersPage from './pages/CustomersPage';
 import SalesPage from './pages/SalesPage';
 import NewSalePage from './pages/NewSalePage';
+import UsersPage from './pages/UsersPage';
+import SaleDetailPage from './pages/SaleDetailPage';
+import StockPage from './pages/StockPage';
+import ConfigurationPage from './pages/ConfigurationPage';
+import ReportsPage from './pages/ReportsPage';
+
+// Components
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 function App() {
   const { isAuthenticated } = useAuthStore();
@@ -40,6 +48,19 @@ function App() {
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/sales" element={<SalesPage />} />
           <Route path="/sales/new" element={<NewSalePage />} />
+          <Route path="/sales/:id" element={<SaleDetailPage />} />
+          <Route path="/users" element={
+            <ProtectedRoute requiredRoles={['ADMIN']}>
+              <UsersPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/stock" element={<StockPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/config" element={
+            <ProtectedRoute requiredRoles={['ADMIN']}>
+              <ConfigurationPage />
+            </ProtectedRoute>
+          } />
         </Route>
 
         {/* Redirección por defecto */}

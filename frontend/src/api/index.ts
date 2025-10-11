@@ -183,3 +183,7 @@ export const userApi = {
     return data;
   },
 };
+
+export { customerPaymentApi } from './customerPayments';
+export { stockApi } from './stock';
+export { configApi } from './config';

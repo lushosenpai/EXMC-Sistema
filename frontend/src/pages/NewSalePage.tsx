@@ -20,11 +20,18 @@ interface CartItem {
   subtotal: number;
 }
 
+interface PaymentItem {
+  method: string;
+  amount: number;
+}
+
 const NewSalePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('EFECTIVO');
+  const [payments, setPayments] = useState<PaymentItem[]>([
+    { method: 'EFECTIVO', amount: 0 },
+  ]);
 
   const { data: productsResponse } = useQuery({
     queryKey: ['products'],
@@ -128,7 +135,7 @@ const NewSalePage = () => {
       });
       setCart([]);
       setSelectedCustomerId('');
-      setPaymentMethod('EFECTIVO');
+      setPayments([{ method: 'EFECTIVO', amount: 0 }]);
       setSearchTerm('');
     },
     onError: (error: any) => {
@@ -147,6 +154,12 @@ const NewSalePage = () => {
       return;
     }
 
+    const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+    if (totalPayments !== total) {
+      toast.error(`El total de pagos ($${totalPayments.toFixed(2)}) debe ser igual al total de la venta ($${total.toFixed(2)})`);
+      return;
+    }
+
     const subtotal = total;
     const tax = 0;
     const discount = 0;
@@ -154,7 +167,10 @@ const NewSalePage = () => {
 
     const saleData = {
       customerId: selectedCustomerId,
-      paymentMethod,
+      payments: payments.map(p => ({
+        method: p.method,
+        amount: p.amount,
+      })),
       subtotal,
       tax,
       discount,
@@ -303,18 +319,78 @@ const NewSalePage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-dark-textSecondary mb-2">Método de Pago</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="input w-full"
-                >
-                  <option value="EFECTIVO">Efectivo</option>
-                  <option value="TRANSFERENCIA">Transferencia</option>
-                  <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
-                  <option value="TARJETA_DEBITO">Tarjeta Débito</option>
-                  <option value="CUENTA_CORRIENTE">Cuenta Corriente</option>
-                </select>
+                <label className="block text-sm font-medium text-dark-textSecondary mb-2">Métodos de Pago</label>
+                <div className="space-y-2">
+                  {payments.map((payment, index) => (
+                    <div key={index} className="flex gap-2">
+                      <select
+                        value={payment.method}
+                        onChange={(e) => {
+                          const newPayments = [...payments];
+                          newPayments[index].method = e.target.value;
+                          setPayments(newPayments);
+                        }}
+                        className="input flex-1"
+                      >
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="TRANSFERENCIA">Transferencia</option>
+                        <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+                        <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+                        <option value="CUENTA_CORRIENTE">Cuenta Corriente</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={payment.amount || ''}
+                        onChange={(e) => {
+                          const newPayments = [...payments];
+                          newPayments[index].amount = parseFloat(e.target.value) || 0;
+                          setPayments(newPayments);
+                        }}
+                        placeholder="Monto"
+                        className="input w-32"
+                        min="0"
+                        step="0.01"
+                      />
+                      {payments.length > 1 && (
+                        <button
+                          onClick={() => {
+                            setPayments(payments.filter((_, i) => i !== index));
+                          }}
+                          className="btn-icon bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setPayments([...payments, { method: 'EFECTIVO', amount: 0 }]);
+                    }}
+                    className="btn-secondary w-full"
+                  >
+                    <FiPlus className="w-4 h-4" />
+                    Agregar Método de Pago
+                  </button>
+                  {payments.reduce((sum, p) => sum + p.amount, 0) > 0 && (
+                    <div className="text-sm">
+                      <div className="flex justify-between text-dark-textSecondary">
+                        <span>Total Pagos:</span>
+                        <span className={payments.reduce((sum, p) => sum + p.amount, 0) === total ? 'text-green-500' : 'text-red-500'}>
+                          {formatCurrency(payments.reduce((sum, p) => sum + p.amount, 0))}
+                        </span>
+                      </div>
+                      {payments.reduce((sum, p) => sum + p.amount, 0) !== total && (
+                        <div className="flex justify-between text-dark-textSecondary mt-1">
+                          <span>Diferencia:</span>
+                          <span className="text-red-500">
+                            {formatCurrency(total - payments.reduce((sum, p) => sum + p.amount, 0))}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

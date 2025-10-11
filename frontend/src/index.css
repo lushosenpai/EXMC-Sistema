@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-border;
+  }
+  
+  body {
+    @apply bg-dark-bg text-dark-text font-sans antialiased;
+  }
+
+  /* Scrollbar personalizado */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-surface;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-textMuted;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-hover shadow-md hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply btn bg-dark-surface text-dark-text hover:bg-dark-surfaceHover border border-dark-border;
+  }
+
+  .btn-success {
+    @apply btn bg-success text-white hover:bg-green-600 shadow-md;
+  }
+
+  .btn-error {
+    @apply btn bg-error text-white hover:bg-red-600 shadow-md;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 bg-dark-surface border border-dark-border rounded-lg text-dark-text placeholder-dark-textMuted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-dark-textSecondary mb-2;
+  }
+
+  .card {
+    @apply bg-dark-surface rounded-xl border border-dark-border shadow-dark p-6;
+  }
+
+  .table {
+    @apply w-full text-left border-collapse;
+  }
+
+  .table thead {
+    @apply bg-dark-bg border-b border-dark-border;
+  }
+
+  .table th {
+    @apply px-6 py-4 text-sm font-semibold text-dark-textSecondary uppercase tracking-wider;
+  }
+
+  .table td {
+    @apply px-6 py-4 text-sm text-dark-text;
+  }
+
+  .table tbody tr {
+    @apply border-b border-dark-border hover:bg-dark-surfaceHover transition-colors;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-success/20 text-success border border-success/30;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning/20 text-warning border border-warning/30;
+  }
+
+  .badge-error {
+    @apply badge bg-error/20 text-error border border-error/30;
+  }
+
+  .badge-info {
+    @apply badge bg-info/20 text-info border border-info/30;
+  }
+
+  /* Modal styles - SOLUCIÓN DEFINITIVA */
+  [data-modal-overlay] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 9998 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  [data-modal-content] {
+    position: relative !important;
+    width: 90% !important;
+    max-width: 48rem !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    z-index: 9999 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

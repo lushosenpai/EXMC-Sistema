@@ -1,0 +1,199 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Usuarios
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(VENDEDOR)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  VENDEDOR
+  CONSULTA
+}
+
+// Modelo de Proveedores
+model Supplier {
+  id           String    @id @default(uuid())
+  name         String
+  phone        String?
+  email        String?
+  address      String?
+  city         String?
+  province     String?
+  observations String?   @db.Text
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  products     Product[]
+
+  @@map("suppliers")
+}
+
+// Modelo de Productos
+model Product {
+  id                 String          @id @default(uuid())
+  name               String
+  code               String          @unique
+  supplierId         String?
+  supplier           Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  costPrice          Float
+  salePrice          Float
+  percentageEnabled  Boolean         @default(false)
+  percentageValue    Float           @default(0)
+  image              String?
+  stock              Int             @default(0)
+  minStock           Int             @default(5)
+  description        String?         @db.Text
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  saleItems          SaleItem[]
+  stockMovements     StockMovement[]
+
+  @@map("products")
+}
+
+// Modelo de Clientes
+model Customer {
+  id              String        @id @default(uuid())
+  name            String
+  phone           String?
+  email           String?
+  address         String?
+  cuitDni         String?       @unique
+  accountType     AccountType   @default(EFECTIVO)
+  creditLimit     Float         @default(0)
+  currentBalance  Float         @default(0)
+  observations    String?       @db.Text
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sales           Sale[]
+
+  @@map("customers")
+}
+
+enum AccountType {
+  EFECTIVO
+  CUENTA_CORRIENTE
+}
+
+// Modelo de Ventas
+model Sale {
+  id            String       @id @default(uuid())
+  saleNumber    String       @unique
+  customerId    String?
+  customer      Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User         @relation(fields: [userId], references: [id])
+  subtotal      Float
+  tax           Float
+  discount      Float        @default(0)
+  extraPercent  Float        @default(0)
+  total         Float
+  paymentMethod PaymentMethod
+  status        SaleStatus   @default(COMPLETADA)
+  observations  String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  items         SaleItem[]
+  payments      Payment[]
+
+  @@map("sales")
+}
+
+enum PaymentMethod {
+  EFECTIVO
+  TRANSFERENCIA
+  TARJETA_CREDITO
+  TARJETA_DEBITO
+  CUENTA_CORRIENTE
+}
+
+enum SaleStatus {
+  PENDIENTE
+  COMPLETADA
+  CANCELADA
+}
+
+// Modelo de Items de Venta
+model SaleItem {
+  id         String   @id @default(uuid())
+  saleId     String
+  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Float
+  subtotal   Float
+  createdAt  DateTime @default(now())
+
+  @@map("sale_items")
+}
+
+// Modelo de Pagos
+model Payment {
+  id            String        @id @default(uuid())
+  saleId        String
+  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentMethod PaymentMethod
+  reference     String?
+  createdAt     DateTime      @default(now())
+
+  @@map("payments")
+}
+
+// Modelo de Movimientos de Stock
+model StockMovement {
+  id          String       @id @default(uuid())
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type        MovementType
+  quantity    Int
+  previousStock Int
+  newStock    Int
+  reason      String?
+  reference   String?
+  createdAt   DateTime     @default(now())
+
+  @@map("stock_movements")
+}
+
+enum MovementType {
+  ENTRADA
+  SALIDA
+  AJUSTE
+  VENTA
+}
+
+// Modelo de Configuración
+model Config {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("config")
+}

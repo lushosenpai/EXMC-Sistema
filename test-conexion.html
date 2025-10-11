@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Conexión - EXMC</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+        .test-box {
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h1 { color: #3b82f6; }
+        h2 { color: #60a5fa; margin-top: 0; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        pre {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #475569;
+        }
+        .loading { color: #fbbf24; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test de Conexión EXMC</h1>
+    <p>Esta página te ayudará a diagnosticar problemas de conexión con el backend.</p>
+
+    <!-- Test 1: Health Check -->
+    <div class="test-box">
+        <h2>1️⃣ Test de Backend (Health Check)</h2>
+        <button onclick="testHealth()">🔍 Probar Conexión</button>
+        <div id="health-result"></div>
+    </div>
+
+    <!-- Test 2: Login -->
+    <div class="test-box">
+        <h2>2️⃣ Test de Login</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@exmc.com" style="width: 250px; padding: 8px; margin: 5px;">
+        <br>
+        <input type="password" id="password" placeholder="Password" value="admin123" style="width: 250px; padding: 8px; margin: 5px;">
+        <br>
+        <button onclick="testLogin()">🔐 Probar Login</button>
+        <div id="login-result"></div>
+    </div>
+
+    <!-- Test 3: Get Products -->
+    <div class="test-box">
+        <h2>3️⃣ Test de Productos (requiere login)</h2>
+        <button onclick="testProducts()">📦 Obtener Productos</button>
+        <div id="products-result"></div>
+    </div>
+
+    <!-- Test 4: Dashboard Stats -->
+    <div class="test-box">
+        <h2>4️⃣ Test de Dashboard (requiere login)</h2>
+        <button onclick="testDashboard()">📊 Obtener Estadísticas</button>
+        <div id="dashboard-result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api';
+        let authToken = null;
+
+        function showResult(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<pre class="${isError ? 'error' : 'success'}">${message}</pre>`;
+        }
+
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = '<p class="loading">⏳ Cargando...</p>';
+        }
+
+        async function testHealth() {
+            showLoading('health-result');
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                showResult('health-result', 
+                    `✅ Backend está activo!\n\nRespuesta:\n${JSON.stringify(data, null, 2)}`
+                );
+            } catch (error) {
+                showResult('health-result', 
+                    `❌ Error de conexión:\n${error.message}\n\n¿El backend está corriendo en puerto 3001?`,
+                    true
+                );
+            }
+        }
+
+        async function testLogin() {
+            showLoading('login-result');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.data.token;
+                    localStorage.setItem('token', authToken);
+                    showResult('login-result', 
+                        `✅ Login exitoso!\n\nToken: ${authToken.substring(0, 50)}...\n\nUsuario:\n${JSON.stringify(data.data.user, null, 2)}`
+                    );
+                } else {
+                    showResult('login-result', 
+                        `❌ Login falló:\n${JSON.stringify(data, null, 2)}`,
+                        true
+                    );
+                }
+            } catch (error) {
+                showResult('login-result', 
+                    `❌ Error:\n${error.message}`,
+                    true
+                );
+            }
+        }
+
+        async function testProducts() {
+            showLoading('products-result');
+            
+            if (!authToken) {
+                authToken = localStorage.getItem('token');
+            }
+
+            if (!authToken) {
+                showResult('products-result', 
+                    '❌ Primero debes hacer login para obtener el token',
+                    true
+                );
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/products`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('products-result', 
+                        `✅ Productos obtenidos!\n\nTotal: ${data.data.length} productos\n\nPrimeros 3:\n${JSON.stringify(data.data.slice(0, 3), null, 2)}`
+                    );
+                } else {
+                    showResult('products-result', 
+                        `❌ Error:\n${JSON.stringify(data, null, 2)}`,
+                        true
+                    );
+                }
+            } catch (error) {
+                showResult('products-result', 
+                    `❌ Error:\n${error.message}`,
+                    true
+                );
+            }
+        }
+
+        async function testDashboard() {
+            showLoading('dashboard-result');
+            
+            if (!authToken) {
+                authToken = localStorage.getItem('token');
+            }
+
+            if (!authToken) {
+                showResult('dashboard-result', 
+                    '❌ Primero debes hacer login para obtener el token',
+                    true
+                );
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/dashboard/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult('dashboard-result', 
+                        `✅ Estadísticas obtenidas!\n\n${JSON.stringify(data.data, null, 2)}`
+                    );
+                } else {
+                    showResult('dashboard-result', 
+                        `❌ Error:\n${JSON.stringify(data, null, 2)}`,
+                        true
+                    );
+                }
+            } catch (error) {
+                showResult('dashboard-result', 
+                    `❌ Error:\n${error.message}`,
+                    true
+                );
+            }
+        }
+
+        // Auto-test al cargar
+        window.onload = () => {
+            console.log('🧪 Página de pruebas cargada');
+            console.log('API URL:', API_URL);
+            
+            // Intentar recuperar token del localStorage
+            const savedToken = localStorage.getItem('token');
+            if (savedToken) {
+                authToken = savedToken;
+                console.log('✅ Token encontrado en localStorage');
+            }
+        };
+    </script>
+</body>
+</html>

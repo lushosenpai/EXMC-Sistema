@@ -42,7 +42,8 @@ const ReportsPage = () => {
     queryFn: () => dashboardApi.getStats(),
   });
 
-  const { data: salesReport, isLoading: isLoadingReport } = useQuery({
+  // Query para reporte de ventas (preparado para uso futuro)
+  const { isLoading: isLoadingReport } = useQuery({
     queryKey: ['sales-report', dateRange],
     queryFn: () => dashboardApi.getSalesReport(dateRange),
   });

@@ -13,7 +13,7 @@ import customerRoutes from './routes/customer.routes';
 import saleRoutes from './routes/sale.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import configRoutes from './routes/config.routes';
-import customerPaymentRoutes from './routes/customerPayment.routes';
+// import customerPaymentRoutes from './routes/customerPayment.routes'; // TODO: Descomentar cuando Prisma Client incluya CustomerPayment
 import stockRoutes from './routes/stock.routes';
 
 dotenv.config();
@@ -51,7 +51,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/config', configRoutes);
-app.use('/api/customers', customerPaymentRoutes);
+// app.use('/api/customer-payments', customerPaymentRoutes); // TODO: Descomentar cuando Prisma Client incluya CustomerPayment
 app.use('/api/stock', stockRoutes);
 
 // Health check

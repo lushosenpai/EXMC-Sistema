@@ -6,10 +6,9 @@ import { useEffect, useState } from 'react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: ('ADMIN' | 'VENDEDOR' | 'CONSULTA')[];
-  readOnly?: boolean;
 }
 
-const ProtectedRoute = ({ children, requiredRoles, readOnly = false }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps) => {
   const { user, isAuthenticated } = useAuthStore();
   const [hasShownToast, setHasShownToast] = useState(false);
 

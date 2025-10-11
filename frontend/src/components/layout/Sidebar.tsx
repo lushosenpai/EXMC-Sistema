@@ -8,7 +8,6 @@ import {
   FiShoppingCart,
   FiUserCheck,
   FiLayers,
-  FiSettings,
   FiBarChart2,
 } from 'react-icons/fi';
 import logoSVG from '../../assets/EXMC.svg';
@@ -23,7 +22,6 @@ const Sidebar = () => {
     { icon: FiTruck, label: 'Proveedores', path: '/suppliers' },
     { icon: FiBarChart2, label: 'Reportes', path: '/reports' },
     { icon: FiUserCheck, label: 'Usuarios', path: '/users' },
-    { icon: FiSettings, label: 'Configuración', path: '/config' },
   ];
 
   return (

@@ -3,7 +3,6 @@ import { useAuthStore } from '@/store/authStore';
 import { FiUser, FiLogOut, FiBell, FiSettings, FiChevronDown } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import logoSVG from '../../assets/EXMC.svg';
 
 const Navbar = () => {
   const { user, logout } = useAuthStore();
@@ -25,11 +24,6 @@ const Navbar = () => {
   return (
     <header className="h-16 bg-dark-surface border-b border-dark-border px-6 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <img 
-          src={logoSVG} 
-          alt="EXMC" 
-          className="w-12 h-12 hidden md:block"
-        />
         <div>
           <h2 className="text-lg font-semibold text-white">
             Bienvenido, {user?.name || 'Usuario'}

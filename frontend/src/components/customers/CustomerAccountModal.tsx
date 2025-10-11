@@ -79,9 +79,42 @@ const CustomerAccountModal = ({ customer, onClose }: Props) => {
   };
 
   const handleDeletePayment = (paymentId: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este pago?')) {
-      deletePaymentMutation.mutate(paymentId);
-    }
+    toast.promise(
+      new Promise((resolve, reject) => {
+        toast((t) => (
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold">¿Eliminar pago?</p>
+            <p className="text-sm text-gray-600">¿Estás seguro de eliminar este pago?</p>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  deletePaymentMutation.mutate(paymentId);
+                  resolve(true);
+                }}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  reject();
+                }}
+                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ), { duration: 10000 });
+      }),
+      {
+        loading: '',
+        success: '',
+        error: '',
+      }
+    );
   };
 
   const formatCurrency = (amount: number) => {

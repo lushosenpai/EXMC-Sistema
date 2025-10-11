@@ -72,9 +72,42 @@ const SuppliersPageFull = () => {
   });
 
   const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`¿Estás seguro de eliminar el proveedor "${name}"?`)) {
-      deleteMutation.mutate(id);
-    }
+    toast.promise(
+      new Promise((resolve, reject) => {
+        toast((t) => (
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold">¿Eliminar proveedor?</p>
+            <p className="text-sm text-gray-600">¿Estás seguro de eliminar "{name}"?</p>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  deleteMutation.mutate(id);
+                  resolve(true);
+                }}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+              >
+                Eliminar
+              </button>
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  reject();
+                }}
+                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ), { duration: 10000 });
+      }),
+      {
+        loading: '',
+        success: '',
+        error: '',
+      }
+    );
   };
 
   const openCreateModal = () => {

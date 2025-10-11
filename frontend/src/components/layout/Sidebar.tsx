@@ -40,7 +40,6 @@ const Sidebar = () => {
             className="w-24 h-24"
           />
           <div className="text-center">
-            <h1 className="text-xl font-bold text-white">EXMC</h1>
             <p className="text-xs text-dark-textMuted">Sistema de Gestión Comercial</p>
           </div>
         </motion.div>

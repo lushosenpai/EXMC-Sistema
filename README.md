@@ -8,11 +8,12 @@
 ![TypeScript](https://img.shields.io/badge/typescript-5.3.3-blue.svg)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-14%2B-336791.svg)
 ![Prisma](https://img.shields.io/badge/prisma-5.22.0-2D3748.svg)
+![Electron](https://img.shields.io/badge/electron-28.0.0-47848F.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 **Sistema integral de gestión comercial con arquitectura full-stack moderna**
 
-[🚀 Inicio Rápido](#-inicio-rápido) • [📖 Documentación](#-documentación-completa) • [✨ Características](#-características-completas) • [🛠️ Tecnologías](#️-stack-tecnológico) • [👨‍💻 Autor](#-autor)
+[🚀 Inicio Rápido](#-inicio-rápido) • [💻 App Desktop](#-versión-desktop-electron) • [📖 Documentación](#-documentación-completa) • [✨ Características](#-características-completas) • [🛠️ Tecnologías](#️-stack-tecnológico) • [👨‍💻 Autor](#-autor)
 
 </div>
 
@@ -35,10 +36,40 @@
 ✅ **Protección de Rutas** - Seguridad basada en roles JWT  
 ✅ **UI Moderna** - Tema oscuro con animaciones (Framer Motion)  
 ✅ **Infraestructura Preparada** - AFIP y Mercado Pago listos para activar  
+✅ **📦 Aplicación Desktop** - **¡NUEVO!** Instalador .exe para Windows (Electron)
 
 ### 🌟 Característica Única
 
 **💰 Múltiples Métodos de Pago**: Permite dividir el pago de una venta en diferentes métodos simultáneamente. Por ejemplo: $500 en Efectivo + $300 en Transferencia + $200 en Tarjeta.  
+
+---
+
+## 💻 Versión Desktop (Electron)
+
+### 🎯 ¡NOVEDAD! Aplicación de Escritorio
+
+Ahora puedes distribuir EXMC como una **aplicación de escritorio nativa** con instalador `.exe`:
+
+**✨ Ventajas:**
+- ✅ **Instalación con un clic** - Sin configurar XAMPP ni PostgreSQL manualmente
+- ✅ **Todo incluido** - PostgreSQL portable integrado
+- ✅ **Ícono en bandeja** - Minimiza a la bandeja del sistema
+- ✅ **Arranque automático** - Backend y DB inician solos
+- ✅ **Instalador profesional** - ~300 MB con todo incluido
+- ✅ **Distribución fácil** - Un solo archivo .exe para compartir
+
+**📦 Descargar:**
+```bash
+# Próximamente en releases:
+Sistema EXMC-Setup-1.0.0.exe (~300 MB)
+```
+
+**🛠️ Compilar tu propio instalador:**
+```bash
+# Ver guía completa en:
+ELECTRON-README.md
+ELECTRON-QUICKSTART.md
+```
 
 ---
 

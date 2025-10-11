@@ -1,0 +1,327 @@
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const isDev = process.env.NODE_ENV === 'development';
+
+let mainWindow;
+let tray;
+let backendProcess;
+let postgresProcess;
+
+const BACKEND_PORT = 3001;
+const FRONTEND_PORT = 5173;
+
+// Rutas portables
+const APP_PATH = app.getAppPath();
+const USER_DATA_PATH = app.getPath('userData');
+const POSTGRES_PATH = path.join(APP_PATH, 'postgres');
+const DATA_PATH = path.join(USER_DATA_PATH, 'data');
+
+// Asegurar que existan los directorios necesarios
+if (!fs.existsSync(DATA_PATH)) {
+  fs.mkdirSync(DATA_PATH, { recursive: true });
+}
+
+// Iniciar PostgreSQL portable
+async function startPostgres() {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(POSTGRES_PATH)) {
+      console.log('PostgreSQL no encontrado en:', POSTGRES_PATH);
+      // En producción, PostgreSQL debe estar incluido
+      if (!isDev) {
+        dialog.showErrorBox(
+          'Error de PostgreSQL',
+          'No se encontró PostgreSQL. Por favor reinstale la aplicación.'
+        );
+        app.quit();
+        return;
+      }
+      resolve(); // En desarrollo, usar PostgreSQL del sistema
+      return;
+    }
+
+    const pgBin = path.join(POSTGRES_PATH, 'bin', 'pg_ctl.exe');
+    const pgData = path.join(DATA_PATH, 'pgdata');
+
+    // Inicializar base de datos si no existe
+    if (!fs.existsSync(pgData)) {
+      console.log('Inicializando base de datos PostgreSQL...');
+      const initdb = spawn(
+        path.join(POSTGRES_PATH, 'bin', 'initdb.exe'),
+        ['-D', pgData, '-U', 'postgres', '--encoding=UTF8'],
+        { windowsHide: true }
+      );
+
+      initdb.on('close', (code) => {
+        if (code === 0) {
+          startPostgresServer(pgBin, pgData, resolve, reject);
+        } else {
+          reject(new Error('Error al inicializar PostgreSQL'));
+        }
+      });
+    } else {
+      startPostgresServer(pgBin, pgData, resolve, reject);
+    }
+  });
+}
+
+function startPostgresServer(pgBin, pgData, resolve, reject) {
+  console.log('Iniciando servidor PostgreSQL...');
+  
+  postgresProcess = spawn(
+    pgBin,
+    ['start', '-D', pgData, '-o', '-p 5433 -k ""'],
+    { windowsHide: true }
+  );
+
+  // Esperar a que PostgreSQL esté listo
+  setTimeout(() => {
+    console.log('PostgreSQL iniciado correctamente');
+    resolve();
+  }, 3000);
+
+  postgresProcess.on('error', (err) => {
+    console.error('Error al iniciar PostgreSQL:', err);
+    reject(err);
+  });
+}
+
+// Iniciar servidor backend
+async function startBackend() {
+  return new Promise((resolve) => {
+    const backendPath = isDev
+      ? path.join(__dirname, '..', 'backend')
+      : path.join(APP_PATH, 'backend');
+
+    console.log('Iniciando servidor backend en:', backendPath);
+
+    // Variables de entorno para el backend
+    const env = {
+      ...process.env,
+      NODE_ENV: 'production',
+      PORT: BACKEND_PORT.toString(),
+      DATABASE_URL: isDev
+        ? process.env.DATABASE_URL
+        : `postgresql://postgres:postgres@localhost:5433/exmc_db`,
+      JWT_SECRET: process.env.JWT_SECRET || 'exmc-secret-key-change-in-production',
+    };
+
+    const nodePath = isDev ? 'node' : path.join(APP_PATH, 'node.exe');
+    const backendScript = path.join(backendPath, 'dist', 'index.js');
+
+    backendProcess = spawn(nodePath, [backendScript], {
+      cwd: backendPath,
+      env,
+      windowsHide: true,
+    });
+
+    backendProcess.stdout?.on('data', (data) => {
+      console.log(`Backend: ${data}`);
+    });
+
+    backendProcess.stderr?.on('data', (data) => {
+      console.error(`Backend Error: ${data}`);
+    });
+
+    backendProcess.on('error', (err) => {
+      console.error('Error al iniciar backend:', err);
+      dialog.showErrorBox(
+        'Error del Servidor',
+        'No se pudo iniciar el servidor backend. Por favor reinicie la aplicación.'
+      );
+    });
+
+    // Esperar a que el backend esté listo
+    setTimeout(resolve, 2000);
+  });
+}
+
+// Crear ventana principal
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 1200,
+    minHeight: 700,
+    backgroundColor: '#0f172a',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+    show: false, // No mostrar hasta que esté listo
+  });
+
+  // Remover menú por defecto
+  mainWindow.setMenuBarVisibility(false);
+
+  // Cargar la aplicación
+  const startUrl = isDev
+    ? `http://localhost:${FRONTEND_PORT}`
+    : `http://localhost:${BACKEND_PORT}`;
+
+  mainWindow.loadURL(startUrl);
+
+  // Mostrar cuando esté listo
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.maximize();
+  });
+
+  // Abrir DevTools en desarrollo
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // Minimizar a bandeja en lugar de cerrar
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+// Crear icono de bandeja
+function createTray() {
+  const iconPath = path.join(__dirname, 'assets', 'tray-icon.png');
+  tray = new Tray(iconPath);
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Mostrar EXMC',
+      click: () => {
+        mainWindow.show();
+        mainWindow.focus();
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Acerca de',
+      click: () => {
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'Sistema EXMC',
+          message: 'Sistema EXMC v1.0.0',
+          detail:
+            'Sistema de Gestión Comercial\n\nDesarrollado por:\nLuciano Savoretti\nDev / Sistemas / Web\n\nInstagram: @devpuchito',
+          buttons: ['OK'],
+        });
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Salir',
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setToolTip('Sistema EXMC - Gestión Comercial');
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) {
+      mainWindow.hide();
+    } else {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// Inicialización de la aplicación
+app.on('ready', async () => {
+  console.log('Iniciando Sistema EXMC...');
+  
+  try {
+    // 1. Iniciar PostgreSQL (si no está en desarrollo)
+    if (!isDev) {
+      await startPostgres();
+    }
+
+    // 2. Iniciar servidor backend
+    await startBackend();
+
+    // 3. Crear ventana principal
+    createWindow();
+
+    // 4. Crear icono de bandeja
+    createTray();
+
+    console.log('Sistema EXMC iniciado correctamente');
+  } catch (error) {
+    console.error('Error al iniciar la aplicación:', error);
+    dialog.showErrorBox(
+      'Error de Inicio',
+      'No se pudo iniciar la aplicación. Por favor contacte con soporte.'
+    );
+    app.quit();
+  }
+});
+
+// Cerrar todo al salir
+app.on('before-quit', () => {
+  app.isQuitting = true;
+
+  // Cerrar procesos
+  if (backendProcess) {
+    backendProcess.kill();
+  }
+  
+  if (postgresProcess) {
+    postgresProcess.kill();
+  }
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (mainWindow === null) {
+    createWindow();
+  }
+});
+
+// IPC Handlers
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
+ipcMain.handle('get-app-path', () => {
+  return app.getAppPath();
+});
+
+ipcMain.handle('get-user-data-path', () => {
+  return app.getPath('userData');
+});
+
+ipcMain.handle('show-message', (event, { type, title, message }) => {
+  return dialog.showMessageBox(mainWindow, {
+    type,
+    title,
+    message,
+    buttons: ['OK'],
+  });
+});
+
+// Manejo de errores no capturados
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  dialog.showErrorBox('Error Inesperado', error.message);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
+});

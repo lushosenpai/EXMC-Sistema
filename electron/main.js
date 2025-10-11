@@ -2,7 +2,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = !app.isPackaged; // Mejor detección de modo desarrollo
 
 let mainWindow;
 let tray;
@@ -139,13 +139,15 @@ async function startBackend() {
 
 // Crear ventana principal
 function createWindow() {
+  const windowIcon = path.join(__dirname, 'assets', 'icon.png');
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 1200,
     minHeight: 700,
     backgroundColor: '#0f172a',
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: fs.existsSync(windowIcon) ? windowIcon : undefined, // Ícono opcional
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -191,6 +193,14 @@ function createWindow() {
 // Crear icono de bandeja
 function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'tray-icon.png');
+  
+  // Verificar si existe el ícono
+  if (!fs.existsSync(iconPath)) {
+    console.log('⚠️  Ícono de bandeja no encontrado, saltando creación del tray');
+    console.log('   Para agregar ícono, ver: electron/ICONOS.md');
+    return; // Salir si no existe el ícono
+  }
+  
   tray = new Tray(iconPath);
 
   const contextMenu = Menu.buildFromTemplate([
@@ -241,15 +251,22 @@ function createTray() {
 // Inicialización de la aplicación
 app.on('ready', async () => {
   console.log('Iniciando Sistema EXMC...');
+  console.log('Modo:', isDev ? 'DESARROLLO' : 'PRODUCCIÓN');
   
   try {
-    // 1. Iniciar PostgreSQL (si no está en desarrollo)
+    // En desarrollo, backend y frontend se inician con concurrently
+    // Solo iniciamos backend automáticamente en producción
     if (!isDev) {
+      // 1. Iniciar PostgreSQL portable (SOLO EN PRODUCCIÓN)
+      console.log('Iniciando PostgreSQL portable...');
       await startPostgres();
+      
+      // 2. Iniciar servidor backend
+      await startBackend();
+    } else {
+      console.log('Modo desarrollo: Backend y Frontend gestionados por concurrently');
+      console.log('Usando PostgreSQL instalado en el sistema (puerto 5432)');
     }
-
-    // 2. Iniciar servidor backend
-    await startBackend();
 
     // 3. Crear ventana principal
     createWindow();

@@ -7,12 +7,11 @@
 ![React](https://img.shields.io/badge/react-18.2.0-61dafb.svg)
 ![TypeScript](https://img.shields.io/badge/typescript-5.3.3-blue.svg)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-14%2B-336791.svg)
-![Prisma](https://img.shields.io/badge/prisma-5.22.0-2D3748.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 **Sistema integral de gestión comercial con arquitectura full-stack moderna**
 
-[🚀 Inicio Rápido](#-inicio-rápido) • [📖 Documentación](#-documentación-completa) • [✨ Características](#-características-completas) • [🛠️ Tecnologías](#️-stack-tecnológico) • [👨‍💻 Autor](#-autor)
+[🚀 Inicio Rápido](#-inicio-rápido) • [📖 Documentación](#-documentación-completa) • [✨ Características](#-características-completas) • [🛠️ Tecnologías](#️-stack-tecnológico) • [🎥 Demo](#-demo)
 
 </div>
 
@@ -42,25 +41,22 @@
 
 ---
 
-## 🚀 Inicio Rápido
+## � Inicio Rápido
 
 ### ⚡ Instalación Automática (Windows)
 
 **La forma más rápida de comenzar:**
 
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/lushosenpai/EXMC-Sistema.git
-cd EXMC-Sistema
+1. **Doble clic en `instalar.bat`**
+   - Instala todas las dependencias
+   - Configura la base de datos
+   - Carga datos de ejemplo
 
-# 2. Instalar dependencias (doble clic o ejecutar)
-instalar.bat
+2. **Doble clic en `iniciar.bat`**
+   - Inicia backend y frontend automáticamente
+   - Abre el navegador
 
-# 3. Iniciar el sistema (doble clic o ejecutar)
-iniciar.bat
-```
-
-**¡Listo!** El navegador se abrirá automáticamente en `http://localhost:5173` 🎉
+3. **¡Listo!** 🎉
 
 ### � Instalación Manual
 
@@ -581,58 +577,12 @@ npm run lint         # Linter
 
 ## 📝 Licencia
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+Proyecto privado - Todos los derechos reservados © 2025
+
+## 👨‍💻 Soporte
+
+Para consultas o soporte técnico, contactar al equipo de desarrollo.
 
 ---
 
-## 👨‍💻 Autor
-
-**Luciano Savoretti**  
-*Dev / Sistemas / Web*
-
-[![Instagram](https://img.shields.io/badge/Instagram-@devpuchito-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://www.instagram.com/devpuchito/)
-
----
-
-## 🤝 Contribuir
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add: Amazing Feature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
----
-
-## � Reportar Problemas
-
-¿Encontraste un bug o tienes una sugerencia?
-
-1. Abre un [Issue](https://github.com/lushosenpai/EXMC-Sistema/issues)
-2. Describe el problema claramente
-3. Incluye pasos para reproducirlo
-4. Agrega capturas de pantalla si es posible
-
----
-
-## 📞 Soporte
-
-¿Necesitas ayuda?
-
-1. 📖 Lee la documentación en los archivos `.md`
-2. 🐛 Revisa [PRUEBAS-Y-DEBUG.md](PRUEBAS-Y-DEBUG.md)
-3. 💬 Abre un Issue en GitHub
-4. 📧 Contacta al autor
-
----
-
-<div align="center">
-
-**⭐ Si te gusta este proyecto, dale una estrella en GitHub ⭐**
-
-**© 2024 Sistema EXMC • Desarrollado con ❤️ por [Luciano Savoretti](https://www.instagram.com/devpuchito/)**
-
-</div>
-
+**Desarrollado con ❤️ por el equipo EXMC**

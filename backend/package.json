@@ -19,10 +19,17 @@
     "express",
     "typescript",
     "prisma",
-    "postgresql"
+    "postgresql",
+    "punto-de-venta",
+    "gestion-comercial",
+    "facturacion"
   ],
-  "author": "EXMC Team",
-  "license": "ISC",
+  "author": {
+    "name": "Luciano Savoretti",
+    "role": "Dev / Sistemas / Web",
+    "instagram": "https://www.instagram.com/devpuchito/"
+  },
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.9.1",
     "bcrypt": "^5.1.1",

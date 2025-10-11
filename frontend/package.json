@@ -3,6 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "description": "Frontend React para Sistema de Gestión Comercial EXMC",
+  "author": {
+    "name": "Luciano Savoretti",
+    "role": "Dev / Sistemas / Web",
+    "instagram": "https://www.instagram.com/devpuchito/"
+  },
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

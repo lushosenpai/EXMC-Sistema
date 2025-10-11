@@ -54,9 +54,19 @@ app.use('/api/config', configRoutes);
 // app.use('/api/customer-payments', customerPaymentRoutes); // TODO: Descomentar cuando Prisma Client incluya CustomerPayment
 app.use('/api/stock', stockRoutes);
 
-// Health check
+// Health check and system info
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    version: '1.0.0',
+    system: 'Sistema EXMC - Gestión Comercial',
+    author: {
+      name: 'Luciano Savoretti',
+      role: 'Dev / Sistemas / Web',
+      instagram: 'https://www.instagram.com/devpuchito/'
+    }
+  });
 });
 
 // Error handling middleware

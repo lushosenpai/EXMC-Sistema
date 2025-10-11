@@ -229,3 +229,111 @@ export const deleteCustomer = async (
     next(error);
   }
 };
+
+// Get customer account summary (simplified version without CustomerPayment table)
+export const getCustomerAccountSummary = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      include: {
+        sales: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            items: {
+              include: {
+                product: true,
+              },
+            },
+            payments: true,
+          },
+        },
+      },
+    });
+
+    if (!customer) {
+      throw new NotFoundError('Cliente no encontrado');
+    }
+
+    // Calculate totals from sales
+    const totalSales = await prisma.sale.aggregate({
+      where: {
+        customerId: id,
+        status: 'COMPLETADA',
+      },
+      _sum: {
+        total: true,
+      },
+    });
+
+    // Calculate total payments from sales (sum of all payment amounts)
+    const salesWithPayments = await prisma.sale.findMany({
+      where: {
+        customerId: id,
+        status: 'COMPLETADA',
+      },
+      include: {
+        payments: true,
+      },
+    });
+
+    const totalPayments = salesWithPayments.reduce((sum, sale) => {
+      const salePayments = sale.payments.reduce((saleSum: number, payment) => saleSum + payment.amount, 0);
+      return sum + salePayments;
+    }, 0);
+
+    const totalSalesAmount = totalSales._sum?.total || 0;
+    const currentBalance = customer.currentBalance;
+    const availableCredit = customer.creditLimit - currentBalance;
+    const creditUtilization = customer.creditLimit > 0 
+      ? (currentBalance / customer.creditLimit) * 100 
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        customer: {
+          id: customer.id,
+          name: customer.name,
+          accountType: customer.accountType,
+          creditLimit: customer.creditLimit,
+          currentBalance: customer.currentBalance,
+        },
+        summary: {
+          totalSales: totalSalesAmount,
+          totalPayments: totalPayments,
+          currentBalance: currentBalance,
+          availableCredit: availableCredit,
+          creditUtilization: creditUtilization,
+        },
+        recentSales: customer.sales.map(sale => ({
+          id: sale.id,
+          date: sale.createdAt,
+          total: sale.total,
+          status: sale.status,
+          items: sale.items.length,
+        })),
+        // Note: Detailed payment history requires CustomerPayment table
+        // For now, we show payment info from sales (Payment model)
+        recentPayments: salesWithPayments.slice(0, 10).flatMap(sale => 
+          sale.payments.map(payment => ({
+            id: payment.id,
+            saleId: sale.id,
+            amount: payment.amount,
+            paymentMethod: payment.paymentMethod,
+            reference: payment.reference,
+            createdAt: sale.createdAt,
+          }))
+        ).slice(0, 10),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

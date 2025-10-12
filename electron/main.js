@@ -139,7 +139,8 @@ async function startBackend() {
 
 // Crear ventana principal
 function createWindow() {
-  const windowIcon = path.join(__dirname, 'assets', 'icon.png');
+  // Usar .ico en Windows para mejor calidad
+  const windowIcon = path.join(__dirname, 'assets', 'icon.ico');
   
   mainWindow = new BrowserWindow({
     width: 1400,

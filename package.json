@@ -53,14 +53,18 @@
       {
         "from": "postgres-portable",
         "to": "postgres",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "electron/assets/icon.ico",
@@ -79,7 +83,9 @@
       "perMachine": false,
       "allowElevation": true,
       "displayLanguageSelector": false,
-      "installerLanguages": ["es_ES"],
+      "installerLanguages": [
+        "es_ES"
+      ],
       "language": "es_ES"
     },
     "publish": null

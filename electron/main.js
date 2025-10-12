@@ -40,11 +40,20 @@ licenseManager = new LicenseManager();
 
 // Crear ventana de activación
 function createLicenseWindow() {
+  // Si ya existe la ventana, no crear otra
+  if (licenseWindow && !licenseWindow.isDestroyed()) {
+    licenseWindow.focus();
+    return;
+  }
+
   licenseWindow = new BrowserWindow({
-    width: 550,
-    height: 700,
-    resizable: false,
+    width: 600,
+    height: 850,
+    minWidth: 550,
+    minHeight: 800,
+    resizable: true,
     frame: true,
+    center: true,
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       nodeIntegration: false,
@@ -329,6 +338,13 @@ async function startBackend() {
 
 // Crear ventana principal
 function createWindow() {
+  // Si ya existe la ventana principal, no crear otra
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+
   // Usar .ico en Windows para mejor calidad
   const windowIcon = path.join(__dirname, 'assets', 'icon.ico');
   

@@ -16,20 +16,23 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
             padding: 20px;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         .container {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
+            max-width: 550px;
             width: 100%;
-            padding: 40px;
+            padding: 40px 35px;
             animation: slideIn 0.5s ease;
+            margin: 20px auto;
+            min-height: fit-content;
         }
         
         @keyframes slideIn {
@@ -45,33 +48,33 @@
         
         .logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         
         .logo h1 {
             color: #667eea;
-            font-size: 32px;
+            font-size: 28px;
             margin-bottom: 5px;
         }
         
         .logo p {
             color: #6b7280;
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .tabs {
             display: flex;
             gap: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #e5e7eb;
         }
         
         .tab {
             flex: 1;
-            padding: 15px;
+            padding: 12px;
             background: none;
             border: none;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: #6b7280;
             cursor: pointer;
@@ -100,15 +103,15 @@
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         label {
             display: block;
             color: #1f2937;
             font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
+            margin-bottom: 6px;
+            font-size: 13px;
         }
         
         input[type="text"] {
@@ -131,24 +134,24 @@
         
         .machine-id {
             background: #f3f4f6;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .machine-id label {
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
             margin-bottom: 5px;
         }
         
         .machine-id .id-value {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
             color: #1f2937;
             word-break: break-all;
             user-select: all;
-            padding: 10px;
+            padding: 8px;
             background: white;
             border-radius: 6px;
             margin-top: 5px;
@@ -194,21 +197,21 @@
         .info-box {
             background: #dbeafe;
             border-left: 4px solid #3b82f6;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .info-box h3 {
             color: #1e40af;
-            font-size: 16px;
-            margin-bottom: 8px;
+            font-size: 15px;
+            margin-bottom: 6px;
         }
         
         .info-box p {
             color: #1e3a8a;
-            font-size: 14px;
-            line-height: 1.5;
+            font-size: 13px;
+            line-height: 1.4;
         }
         
         .trial-info {
@@ -270,30 +273,34 @@
         
         .contact-info {
             text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 20px;
+            padding-top: 15px;
             border-top: 2px solid #e5e7eb;
         }
         
         .contact-info p {
             color: #6b7280;
-            font-size: 14px;
-            margin-bottom: 10px;
+            font-size: 13px;
+            margin-bottom: 8px;
         }
         
         .contact-links {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             justify-content: center;
+            flex-wrap: wrap;
         }
         
         .contact-link {
-            padding: 8px 16px;
+            padding: 10px 18px;
             border-radius: 8px;
             text-decoration: none;
             font-size: 13px;
             font-weight: 600;
             transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .contact-link.instagram {

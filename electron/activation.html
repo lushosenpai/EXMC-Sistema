@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activación - Sistema EXMC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        
+        .logo p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            color: #1f2937;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-align: center;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .machine-id {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .machine-id label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 5px;
+        }
+        
+        .machine-id .id-value {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #1f2937;
+            word-break: break-all;
+            user-select: all;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin-top: 5px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .info-box {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .info-box h3 {
+            color: #1e40af;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        
+        .info-box p {
+            color: #1e3a8a;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .trial-info {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .trial-info h3 {
+            color: #92400e;
+        }
+        
+        .trial-info p {
+            color: #78350f;
+        }
+        
+        .success-message {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .success-message p {
+            color: #065f46;
+            font-weight: 600;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+            animation: shake 0.5s ease;
+        }
+        
+        .error-message p {
+            color: #991b1b;
+            font-weight: 600;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .contact-info {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .contact-info p {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .contact-links {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .contact-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .contact-link.instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            color: white;
+        }
+        
+        .contact-link.whatsapp {
+            background: #25d366;
+            color: white;
+        }
+        
+        .contact-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Sistema EXMC</h1>
+            <p>Sistema de Gestión Comercial</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="activate">Activar</button>
+            <button class="tab" data-tab="trial">Período de Prueba</button>
+        </div>
+
+        <div id="success-message" class="success-message">
+            <p></p>
+        </div>
+
+        <div id="error-message" class="error-message">
+            <p></p>
+        </div>
+
+        <!-- Tab Activar -->
+        <div id="activate-tab" class="tab-content active">
+            <div class="info-box">
+                <h3>🔑 Activar Licencia</h3>
+                <p>Ingresa el código de activación proporcionado para usar el sistema sin límite de tiempo.</p>
+            </div>
+
+            <div class="machine-id">
+                <label>ID de esta máquina (enviar al desarrollador):</label>
+                <div class="id-value" id="machine-id">Cargando...</div>
+            </div>
+
+            <div class="form-group">
+                <label>Código de Activación:</label>
+                <input type="text" id="activation-code" placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19">
+            </div>
+
+            <button class="btn btn-primary" id="activate-btn">
+                <span id="activate-text">Activar Licencia</span>
+                <span id="activate-loading" style="display: none;" class="loading"></span>
+            </button>
+        </div>
+
+        <!-- Tab Prueba -->
+        <div id="trial-tab" class="tab-content">
+            <div class="info-box trial-info">
+                <h3>⏰ Período de Prueba</h3>
+                <p>Prueba el sistema completamente funcional durante <strong>15 días gratis</strong>. Sin tarjeta de crédito requerida.</p>
+            </div>
+
+            <div class="form-group">
+                <p style="text-align: center; color: #6b7280; margin-bottom: 20px;">
+                    Al iniciar el período de prueba, tendrás acceso completo a todas las funciones del sistema durante 15 días.
+                </p>
+            </div>
+
+            <button class="btn btn-primary" id="trial-btn">
+                <span id="trial-text">Iniciar Período de Prueba (15 días)</span>
+                <span id="trial-loading" style="display: none;" class="loading"></span>
+            </button>
+
+            <button class="btn btn-secondary" onclick="switchTab('activate')">
+                Tengo un código de activación
+            </button>
+        </div>
+
+        <div class="contact-info">
+            <p><strong>¿Necesitas un código de activación?</strong></p>
+            <p style="font-size: 12px; margin-bottom: 15px;">Contacta al desarrollador:</p>
+            <div class="contact-links">
+                <a href="https://www.instagram.com/devpuchito/" class="contact-link instagram" target="_blank">
+                    📸 Instagram
+                </a>
+                <a href="https://wa.me/5492657580979?text=Hola!%20Necesito%20código%20de%20activación%20para%20Sistema%20EXMC" class="contact-link whatsapp" target="_blank">
+                    💬 WhatsApp
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cargar ID de máquina
+        async function loadMachineId() {
+            try {
+                const machineId = await window.electronAPI.getMachineId();
+                document.getElementById('machine-id').textContent = machineId;
+            } catch (error) {
+                console.error('Error loading machine ID:', error);
+                document.getElementById('machine-id').textContent = 'Error al cargar ID';
+            }
+        }
+
+        // Cambiar tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.dataset.tab);
+            });
+        });
+
+        // Formatear código de activación
+        document.getElementById('activation-code').addEventListener('input', (e) => {
+            let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+            let formatted = value.match(/.{1,4}/g);
+            e.target.value = formatted ? formatted.join('-') : value;
+        });
+
+        // Mostrar mensaje
+        function showMessage(type, message) {
+            const successEl = document.getElementById('success-message');
+            const errorEl = document.getElementById('error-message');
+
+            successEl.classList.remove('show');
+            errorEl.classList.remove('show');
+
+            if (type === 'success') {
+                successEl.querySelector('p').textContent = message;
+                successEl.classList.add('show');
+            } else {
+                errorEl.querySelector('p').textContent = message;
+                errorEl.classList.add('show');
+            }
+
+            setTimeout(() => {
+                successEl.classList.remove('show');
+                errorEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Activar licencia
+        document.getElementById('activate-btn').addEventListener('click', async () => {
+            const code = document.getElementById('activation-code').value.trim();
+            
+            if (!code) {
+                showMessage('error', 'Por favor ingresa un código de activación');
+                return;
+            }
+
+            const btn = document.getElementById('activate-btn');
+            const text = document.getElementById('activate-text');
+            const loading = document.getElementById('activate-loading');
+
+            btn.disabled = true;
+            text.style.display = 'none';
+            loading.style.display = 'inline-block';
+
+            try {
+                const result = await window.electronAPI.activateLicense(code);
+                
+                if (result.success) {
+                    showMessage('success', '¡Licencia activada correctamente! La aplicación se iniciará...');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showMessage('error', result.message || 'Código inválido');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', 'Error al activar licencia');
+            } finally {
+                btn.disabled = false;
+                text.style.display = 'inline';
+                loading.style.display = 'none';
+            }
+        });
+
+        // Iniciar período de prueba
+        document.getElementById('trial-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('trial-btn');
+            const text = document.getElementById('trial-text');
+            const loading = document.getElementById('trial-loading');
+
+            btn.disabled = true;
+            text.style.display = 'none';
+            loading.style.display = 'inline-block';
+
+            try {
+                const result = await window.electronAPI.startTrial();
+                
+                if (result.success) {
+                    showMessage('success', '¡Período de prueba iniciado! La aplicación se iniciará...');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showMessage('error', result.message || 'Error al iniciar prueba');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', 'Error al iniciar período de prueba');
+            } finally {
+                btn.disabled = false;
+                text.style.display = 'inline';
+                loading.style.display = 'none';
+            }
+        });
+
+        // Inicializar
+        loadMachineId();
+    </script>
+</body>
+</html>

@@ -2,12 +2,15 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
+const LicenseManager = require('./license');
 const isDev = !app.isPackaged; // Mejor detección de modo desarrollo
 
 let mainWindow;
+let licenseWindow;
 let tray;
 let backendProcess;
 let postgresProcess;
+let licenseManager;
 
 const BACKEND_PORT = 3001;
 const FRONTEND_PORT = 5173;
@@ -27,6 +30,118 @@ const DATA_PATH = path.join(USER_DATA_PATH, 'data');
 if (!fs.existsSync(DATA_PATH)) {
   fs.mkdirSync(DATA_PATH, { recursive: true });
 }
+
+// Inicializar el gestor de licencias
+licenseManager = new LicenseManager();
+
+// ============================================
+// SISTEMA DE LICENCIAS
+// ============================================
+
+// Crear ventana de activación
+function createLicenseWindow() {
+  licenseWindow = new BrowserWindow({
+    width: 550,
+    height: 700,
+    resizable: false,
+    frame: true,
+    icon: path.join(__dirname, 'assets', 'icon.ico'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'license-preload.js')
+    }
+  });
+
+  licenseWindow.loadFile(path.join(__dirname, 'activation.html'));
+  licenseWindow.setMenu(null);
+
+  licenseWindow.on('closed', () => {
+    licenseWindow = null;
+    // Si cierra sin activar, cerrar la app
+    if (!mainWindow) {
+      app.quit();
+    }
+  });
+}
+
+// Verificar licencia al iniciar
+async function checkLicenseStatus() {
+  const status = licenseManager.checkLicense();
+  
+  console.log('License Status:', status);
+  
+  if (status.status === 'active' || status.status === 'trial') {
+    // Licencia válida, iniciar aplicación normal
+    return true;
+  }
+  
+  if (status.status === 'expired' || status.status === 'trial_expired') {
+    // Licencia expirada, mostrar ventana de activación
+    dialog.showMessageBox({
+      type: 'warning',
+      title: 'Licencia Expirada',
+      message: status.message,
+      detail: 'Por favor activa tu licencia para continuar usando el sistema.',
+      buttons: ['Activar']
+    });
+    return false;
+  }
+  
+  // Sin licencia, mostrar ventana de activación
+  return false;
+}
+
+// IPC Handlers para licencias
+ipcMain.handle('check-license', async () => {
+  return licenseManager.checkLicense();
+});
+
+ipcMain.handle('activate-license', async (event, code) => {
+  const result = licenseManager.activateLicense(code);
+  
+  if (result.success) {
+    // Cerrar ventana de licencia y abrir aplicación principal
+    if (licenseWindow) {
+      licenseWindow.close();
+    }
+    await initializeApp();
+  }
+  
+  return result;
+});
+
+ipcMain.handle('start-trial', async () => {
+  const result = licenseManager.startTrial();
+  
+  if (result.success) {
+    // Cerrar ventana de licencia y abrir aplicación principal
+    if (licenseWindow) {
+      licenseWindow.close();
+    }
+    await initializeApp();
+  }
+  
+  return result;
+});
+
+ipcMain.handle('get-machine-id', async () => {
+  return licenseManager.getMachineIdForActivation();
+});
+
+ipcMain.on('close-app', () => {
+  app.quit();
+});
+
+ipcMain.on('minimize-app', () => {
+  if (licenseWindow) {
+    licenseWindow.minimize();
+  }
+});
+
+// ============================================
+// FIN SISTEMA DE LICENCIAS
+// ============================================
 
 // Iniciar PostgreSQL portable
 async function startPostgres() {
@@ -324,8 +439,8 @@ function createTray() {
   });
 }
 
-// Inicialización de la aplicación
-app.on('ready', async () => {
+// Función para inicializar la aplicación principal
+async function initializeApp() {
   console.log('Iniciando Sistema EXMC...');
   console.log('Modo:', isDev ? 'DESARROLLO' : 'PRODUCCIÓN');
   
@@ -353,37 +468,95 @@ app.on('ready', async () => {
     console.log('Sistema EXMC iniciado correctamente');
   } catch (error) {
     console.error('Error al iniciar la aplicación:', error);
-    dialog.showErrorBox(
-      'Error de Inicio',
-      'No se pudo iniciar la aplicación. Por favor contacte con soporte.'
-    );
+    dialog.showErrorBox('Error de Inicio', `No se pudo iniciar la aplicación: ${error.message}`);
     app.quit();
   }
-});
+}
 
-// Cerrar todo al salir
-app.on('before-quit', () => {
-  app.isQuitting = true;
-
-  // Cerrar procesos
-  if (backendProcess) {
-    backendProcess.kill();
+// Inicialización de la aplicación con verificación de licencia
+app.on('ready', async () => {
+  console.log('=== Sistema EXMC ===');
+  console.log('Verificando licencia...');
+  
+  // En modo desarrollo, saltar verificación de licencia
+  if (isDev) {
+    console.log('Modo desarrollo: Saltando verificación de licencia');
+    await initializeApp();
+    return;
   }
   
-  if (postgresProcess) {
-    postgresProcess.kill();
+  // Verificar estado de la licencia
+  const hasValidLicense = await checkLicenseStatus();
+  
+  if (hasValidLicense) {
+    // Licencia válida, iniciar aplicación
+    const status = licenseManager.checkLicense();
+    console.log(`Licencia válida: ${status.message}`);
+    
+    if (status.daysRemaining && status.daysRemaining <= 7) {
+      // Advertencia si quedan pocos días
+      dialog.showMessageBox({
+        type: 'warning',
+        title: 'Aviso de Licencia',
+        message: `Tu ${status.status === 'trial' ? 'período de prueba' : 'licencia'} expira en ${status.daysRemaining} días`,
+        detail: 'Contacta al desarrollador para renovar tu licencia.',
+        buttons: ['Entendido']
+      });
+    }
+    
+    await initializeApp();
+  } else {
+    // Sin licencia o expirada, mostrar ventana de activación
+    console.log('Licencia no válida o expirada. Mostrando ventana de activación...');
+    createLicenseWindow();
   }
 });
 
+// Evento cuando todas las ventanas se cierran
 app.on('window-all-closed', () => {
+  // En macOS, es común que las apps permanezcan activas
   if (process.platform !== 'darwin') {
-    app.quit();
+    console.log('Todas las ventanas cerradas. Cerrando aplicación...');
   }
 });
 
-app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow();
+app.on('activate', async () => {
+  // En macOS, recrear ventana cuando se hace clic en el icono del dock
+  if (BrowserWindow.getAllWindows().length === 0) {
+    const hasValidLicense = await checkLicenseStatus();
+    if (hasValidLicense) {
+      createWindow();
+    } else {
+      createLicenseWindow();
+    }
+  }
+});
+
+// Cerrar la aplicación correctamente
+app.on('before-quit', async () => {
+  console.log('Cerrando Sistema EXMC...');
+  
+  try {
+    // Cerrar backend
+    if (backendProcess) {
+      console.log('Cerrando servidor backend...');
+      backendProcess.kill();
+    }
+
+    // Cerrar PostgreSQL si está corriendo
+    if (postgresProcess) {
+      console.log('Cerrando PostgreSQL...');
+      const pgBin = path.join(POSTGRES_PATH, 'bin', 'pg_ctl.exe');
+      const pgData = path.join(DATA_PATH, 'pgdata');
+      
+      if (fs.existsSync(pgBin)) {
+        spawn(pgBin, ['stop', '-D', pgData, '-m', 'fast'], {
+          windowsHide: true
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error al cerrar procesos:', error);
   }
 });
 

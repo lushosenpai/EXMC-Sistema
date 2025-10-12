@@ -277,14 +277,34 @@ async function startBackend() {
     console.log('process.resourcesPath:', process.resourcesPath);
     console.log('APP_PATH:', APP_PATH);
     console.log('process.execPath:', process.execPath);
+    console.log('__dirname:', __dirname);
+    
+    // Listar contenido de directorios para debug
+    if (!isDev) {
+      console.log('\n=== DIRECTORY LISTING ===');
+      const resourcesPath = process.resourcesPath;
+      console.log('Resources path contents:', fs.readdirSync(resourcesPath));
+      
+      const unpackedPath = path.join(resourcesPath, 'app.asar.unpacked');
+      if (fs.existsSync(unpackedPath)) {
+        console.log('app.asar.unpacked contents:', fs.readdirSync(unpackedPath));
+        if (fs.existsSync(path.join(unpackedPath, 'backend'))) {
+          console.log('backend folder contents:', fs.readdirSync(path.join(unpackedPath, 'backend')));
+        }
+      }
+    }
 
     if (!fs.existsSync(backendScript)) {
-      const errorMsg = `Backend script no encontrado en: ${backendScript}`;
+      const errorMsg = `❌ Backend script NO encontrado en: ${backendScript}`;
       console.error(errorMsg);
-      dialog.showErrorBox('Error de Backend', errorMsg);
+      
+      // No mostrar error inmediatamente, dejar que continúe
+      console.warn('⚠️ Continuando sin backend - se intentará cargar frontend directamente');
       reject(new Error(errorMsg));
       return;
     }
+    
+    console.log('✅ Backend script encontrado!');
 
     // Variables de entorno para el backend
     const env = {
@@ -394,7 +414,7 @@ function createWindow() {
   mainWindow.setMenuBarVisibility(false);
 
   // Cargar la aplicación
-  const startUrl = isDev
+  let startUrl = isDev
     ? `http://localhost:${FRONTEND_PORT}`
     : `http://localhost:${BACKEND_PORT}`;
 
@@ -402,9 +422,53 @@ function createWindow() {
   console.log('URL:', startUrl);
   console.log('isDev:', isDev);
 
-  mainWindow.loadURL(startUrl).catch(err => {
-    console.error('Error al cargar URL:', err);
-    dialog.showErrorBox('Error de Carga', `No se pudo cargar la aplicación desde ${startUrl}\n\nError: ${err.message}`);
+  // Intentar cargar desde la URL del servidor
+  mainWindow.loadURL(startUrl).catch(async err => {
+    console.error('❌ Error al cargar URL desde servidor:', err);
+    
+    // FALLBACK: Intentar cargar frontend desde archivos locales
+    if (!isDev) {
+      console.log('⚠️ Intentando fallback: cargar frontend desde archivos locales...');
+      
+      // Buscar index.html del frontend
+      const possiblePaths = [
+        path.join(process.resourcesPath, 'app.asar.unpacked', 'frontend', 'dist', 'index.html'),
+        path.join(process.resourcesPath, 'app', 'frontend', 'dist', 'index.html'),
+        path.join(APP_PATH, 'frontend', 'dist', 'index.html'),
+      ];
+      
+      let frontendIndexPath = null;
+      for (const p of possiblePaths) {
+        console.log('Verificando:', p, '→', fs.existsSync(p));
+        if (fs.existsSync(p)) {
+          frontendIndexPath = p;
+          break;
+        }
+      }
+      
+      if (frontendIndexPath) {
+        console.log('✅ Frontend encontrado en:', frontendIndexPath);
+        try {
+          await mainWindow.loadFile(frontendIndexPath);
+          console.log('✅ Frontend cargado desde archivo local!');
+          return;
+        } catch (fileErr) {
+          console.error('❌ Error al cargar desde archivo:', fileErr);
+        }
+      } else {
+        console.error('❌ No se encontró index.html del frontend');
+      }
+    }
+    
+    // Si todo falla, mostrar error
+    dialog.showErrorBox('Error de Carga', 
+      `No se pudo cargar la aplicación desde ${startUrl}\n\n` +
+      `Error: ${err.message}\n\n` +
+      `Intente:\n` +
+      `1. Reiniciar la aplicación\n` +
+      `2. Reinstalar la aplicación\n` +
+      `3. Verificar que el puerto ${BACKEND_PORT} esté disponible`
+    );
   });
 
   // Timeout de seguridad: mostrar ventana después de 3 segundos SIEMPRE
@@ -560,13 +624,24 @@ async function initializeApp() {
     // Solo iniciamos backend automáticamente en producción
     if (!isDev) {
       // 1. Iniciar PostgreSQL portable (SOLO EN PRODUCCIÓN)
-      console.log('Iniciando PostgreSQL portable...');
-      await startPostgres();
+      console.log('📊 Iniciando PostgreSQL portable...');
+      try {
+        await startPostgres();
+        console.log('✅ PostgreSQL iniciado correctamente');
+      } catch (err) {
+        console.error('❌ Error al iniciar PostgreSQL:', err.message);
+        console.warn('⚠️ Continuando sin PostgreSQL...');
+      }
       
       // 2. Iniciar servidor backend
-      console.log('Intentando iniciar backend...');
-      await startBackend();
-      console.log('Backend iniciado (o timeout alcanzado)');
+      console.log('🚀 Intentando iniciar backend...');
+      try {
+        await startBackend();
+        console.log('✅ Backend iniciado correctamente');
+      } catch (err) {
+        console.error('❌ Error al iniciar backend:', err.message);
+        console.warn('⚠️ Continuando sin backend - se usará fallback a archivos locales');
+      }
     } else {
       console.log('Modo desarrollo: Backend y Frontend gestionados por concurrently');
       console.log('Usando PostgreSQL instalado en el sistema (puerto 5432)');

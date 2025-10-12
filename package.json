@@ -34,7 +34,7 @@
   "build": {
     "appId": "com.exmc.sistema",
     "productName": "Sistema EXMC",
-    "copyright": "Copyright © 2025 Luciano Savoretti",
+    "copyright": "Copyright © 2025 Luciano Savoretti (@devpuchito) - Dev/Sistemas/Web",
     "directories": {
       "output": "dist-electron",
       "buildResources": "electron/assets"
@@ -68,7 +68,8 @@
         }
       ],
       "icon": "electron/assets/icon.ico",
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "sign": null
     },
     "nsis": {
       "oneClick": false,
@@ -82,11 +83,8 @@
       "deleteAppDataOnUninstall": false,
       "perMachine": false,
       "allowElevation": true,
-      "displayLanguageSelector": false,
-      "installerLanguages": [
-        "es_ES"
-      ],
-      "language": "es_ES"
+      "warningsAsErrors": false,
+      "include": "electron/installer.nsh"
     },
     "publish": null
   }

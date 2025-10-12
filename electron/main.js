@@ -11,6 +11,8 @@ let tray;
 let backendProcess;
 let postgresProcess;
 let licenseManager;
+let isInitializing = false; // Flag para evitar inicializaciones múltiples
+let appInitialized = false; // Flag para saber si ya se inicializó
 
 const BACKEND_PORT = 3001;
 const FRONTEND_PORT = 5173;
@@ -33,6 +35,29 @@ if (!fs.existsSync(DATA_PATH)) {
 
 // Inicializar el gestor de licencias
 licenseManager = new LicenseManager();
+
+// ============================================
+// PREVENIR MÚLTIPLES INSTANCIAS
+// ============================================
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('Ya hay una instancia ejecutándose. Cerrando...');
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Alguien intentó ejecutar una segunda instancia, enfocamos nuestra ventana
+    console.log('Se intentó abrir una segunda instancia');
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    } else if (licenseWindow) {
+      if (licenseWindow.isMinimized()) licenseWindow.restore();
+      licenseWindow.focus();
+    }
+  });
+}
 
 // ============================================
 // SISTEMA DE LICENCIAS
@@ -457,6 +482,13 @@ function createTray() {
 
 // Función para inicializar la aplicación principal
 async function initializeApp() {
+  // Evitar inicializaciones múltiples
+  if (isInitializing || appInitialized) {
+    console.log('App ya está inicializando o inicializada, saltando...');
+    return;
+  }
+  
+  isInitializing = true;
   console.log('Iniciando Sistema EXMC...');
   console.log('Modo:', isDev ? 'DESARROLLO' : 'PRODUCCIÓN');
   
@@ -481,16 +513,31 @@ async function initializeApp() {
     // 4. Crear icono de bandeja
     createTray();
 
+    appInitialized = true;
     console.log('Sistema EXMC iniciado correctamente');
   } catch (error) {
     console.error('Error al iniciar la aplicación:', error);
     dialog.showErrorBox('Error de Inicio', `No se pudo iniciar la aplicación: ${error.message}`);
     app.quit();
+  } finally {
+    isInitializing = false;
   }
 }
 
 // Inicialización de la aplicación con verificación de licencia
 app.on('ready', async () => {
+  // Solo ejecutar si tenemos el lock (no es segunda instancia)
+  if (!gotTheLock) {
+    console.log('No tenemos el lock, saliendo...');
+    return;
+  }
+  
+  // Evitar ejecución múltiple del evento ready
+  if (isInitializing || appInitialized) {
+    console.log('Ya se está inicializando o ya está inicializado');
+    return;
+  }
+  
   console.log('=== Sistema EXMC ===');
   console.log('Verificando licencia...');
   
@@ -530,27 +577,43 @@ app.on('ready', async () => {
 
 // Evento cuando todas las ventanas se cierran
 app.on('window-all-closed', () => {
-  // En macOS, es común que las apps permanezcan activas
-  if (process.platform !== 'darwin') {
-    console.log('Todas las ventanas cerradas. Cerrando aplicación...');
+  console.log('Todas las ventanas cerradas');
+  // Cerrar la aplicación en todas las plataformas (excepto macOS si no estamos cerrando explícitamente)
+  if (process.platform !== 'darwin' || app.isQuitting) {
+    console.log('Cerrando aplicación...');
+    app.quit();
   }
 });
 
 app.on('activate', async () => {
   // En macOS, recrear ventana cuando se hace clic en el icono del dock
-  if (BrowserWindow.getAllWindows().length === 0) {
-    const hasValidLicense = await checkLicenseStatus();
-    if (hasValidLicense) {
+  // Solo si no hay ventanas abiertas y ya se inicializó la app
+  console.log('Evento activate disparado');
+  
+  if (BrowserWindow.getAllWindows().length === 0 && !isInitializing) {
+    console.log('No hay ventanas, verificando si recrear...');
+    
+    if (appInitialized && mainWindow === null) {
+      // Si la app ya se inicializó pero la ventana se cerró, solo recrear ventana
+      console.log('Recreando ventana principal...');
       createWindow();
-    } else {
-      createLicenseWindow();
+    } else if (!appInitialized) {
+      // Si la app nunca se inicializó, verificar licencia
+      console.log('App no inicializada, verificando licencia...');
+      const hasValidLicense = await checkLicenseStatus();
+      if (hasValidLicense) {
+        await initializeApp();
+      } else {
+        createLicenseWindow();
+      }
     }
   }
 });
 
 // Cerrar la aplicación correctamente
-app.on('before-quit', async () => {
-  console.log('Cerrando Sistema EXMC...');
+app.on('before-quit', async (event) => {
+  console.log('before-quit event');
+  app.isQuitting = true;
   
   try {
     // Cerrar backend
@@ -574,6 +637,10 @@ app.on('before-quit', async () => {
   } catch (error) {
     console.error('Error al cerrar procesos:', error);
   }
+});
+
+app.on('will-quit', () => {
+  console.log('will-quit event');
 });
 
 // IPC Handlers

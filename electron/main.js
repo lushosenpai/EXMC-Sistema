@@ -231,13 +231,14 @@ function startPostgresServer(pgBin, pgData, resolve, reject) {
 
   // Esperar a que PostgreSQL esté listo
   setTimeout(() => {
-    console.log('PostgreSQL iniciado correctamente');
+    console.log('✅ PostgreSQL debería estar listo (timeout 2s)');
     resolve();
-  }, 3000);
+  }, 2000); // Reducido a 2 segundos
 
   postgresProcess.on('error', (err) => {
-    console.error('Error al iniciar PostgreSQL:', err);
-    reject(err);
+    console.error('❌ Error al iniciar PostgreSQL:', err);
+    // No rechazar, solo log - la app puede continuar
+    console.log('Continuando sin PostgreSQL...');
   });
 }
 
@@ -351,13 +352,14 @@ async function startBackend() {
       }
     });
 
-    // Timeout de seguridad - resolver después de 5 segundos si no hay respuesta
+    // Timeout de seguridad - resolver después de 3 segundos si no hay respuesta
     setTimeout(() => {
       if (!backendReady) {
-        console.log('Backend timeout reached, continuing anyway...');
-        resolve();
+        console.log('⚠️ Backend timeout reached (3s), continuing anyway...');
+        console.log('   El backend puede estar iniciando en segundo plano');
+        resolve(); // Siempre resolver para que la app continúe
       }
-    }, 5000);
+    }, 3000); // Reducido a 3 segundos
   });
 }
 
@@ -396,12 +398,73 @@ function createWindow() {
     ? `http://localhost:${FRONTEND_PORT}`
     : `http://localhost:${BACKEND_PORT}`;
 
-  mainWindow.loadURL(startUrl);
+  console.log('=== CARGANDO VENTANA PRINCIPAL ===');
+  console.log('URL:', startUrl);
+  console.log('isDev:', isDev);
+
+  mainWindow.loadURL(startUrl).catch(err => {
+    console.error('Error al cargar URL:', err);
+    dialog.showErrorBox('Error de Carga', `No se pudo cargar la aplicación desde ${startUrl}\n\nError: ${err.message}`);
+  });
+
+  // Timeout de seguridad: mostrar ventana después de 3 segundos SIEMPRE
+  let windowShown = false;
+  const showTimeout = setTimeout(() => {
+    if (!windowShown) {
+      console.log('⏰ Timeout de 3s alcanzado, mostrando ventana FORZADAMENTE...');
+      mainWindow.show();
+      mainWindow.maximize();
+      windowShown = true;
+      
+      // Verificar si hay error de carga después de mostrar
+      setTimeout(() => {
+        mainWindow.webContents.executeJavaScript('document.body.innerHTML').then(html => {
+          console.log('HTML length:', html ? html.length : 0);
+          if (!html || html.trim().length < 100) {
+            console.error('⚠️ La página parece estar vacía o no cargó');
+            dialog.showMessageBox(mainWindow, {
+              type: 'error',
+              title: 'Error de Carga',
+              message: 'La aplicación no se cargó correctamente',
+              detail: `URL intentada: ${startUrl}\n\nVerifique que:\n- El backend esté funcionando\n- Puerto ${BACKEND_PORT} esté disponible\n- No haya firewalls bloqueando`,
+              buttons: ['Reintentar', 'Cerrar']
+            }).then(response => {
+              if (response.response === 0) {
+                mainWindow.reload();
+              } else {
+                app.quit();
+              }
+            });
+          }
+        }).catch(err => {
+          console.error('Error al verificar contenido:', err);
+        });
+      }, 1000);
+    }
+  }, 3000); // Reducido a 3 segundos
 
   // Mostrar cuando esté listo
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.maximize();
+    if (!windowShown) {
+      console.log('ready-to-show event - Mostrando ventana');
+      mainWindow.show();
+      mainWindow.maximize();
+      windowShown = true;
+    }
+  });
+
+  // Detectar errores de carga
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('did-fail-load:', errorCode, errorDescription);
+    dialog.showErrorBox(
+      'Error de Carga',
+      `No se pudo cargar la aplicación.\n\nCódigo: ${errorCode}\nDescripción: ${errorDescription}\n\nURL: ${startUrl}`
+    );
+  });
+
+  // Log cuando termine de cargar
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('did-finish-load - Página cargada correctamente');
   });
 
   // Abrir DevTools en desarrollo
@@ -501,24 +564,47 @@ async function initializeApp() {
       await startPostgres();
       
       // 2. Iniciar servidor backend
+      console.log('Intentando iniciar backend...');
       await startBackend();
+      console.log('Backend iniciado (o timeout alcanzado)');
     } else {
       console.log('Modo desarrollo: Backend y Frontend gestionados por concurrently');
       console.log('Usando PostgreSQL instalado en el sistema (puerto 5432)');
     }
 
     // 3. Crear ventana principal
+    console.log('Creando ventana principal...');
     createWindow();
+    console.log('Ventana principal creada');
 
     // 4. Crear icono de bandeja
+    console.log('Creando icono de bandeja...');
     createTray();
+    console.log('Icono de bandeja creado');
 
     appInitialized = true;
-    console.log('Sistema EXMC iniciado correctamente');
+    console.log('✅ Sistema EXMC inicializado correctamente');
   } catch (error) {
-    console.error('Error al iniciar la aplicación:', error);
-    dialog.showErrorBox('Error de Inicio', `No se pudo iniciar la aplicación: ${error.message}`);
-    app.quit();
+    console.error('❌ Error al iniciar la aplicación:', error);
+    
+    // Mostrar error pero intentar abrir ventana de todas formas
+    dialog.showMessageBox({
+      type: 'error',
+      title: 'Error de Inicio',
+      message: 'Hubo un error al iniciar algunos componentes',
+      detail: `Error: ${error.message}\n\nLa aplicación intentará abrirse de todas formas.`,
+      buttons: ['Continuar', 'Salir']
+    }).then(response => {
+      if (response.response === 1) {
+        app.quit();
+      } else {
+        // Intentar crear ventana de todas formas
+        if (!mainWindow) {
+          console.log('Intentando crear ventana después del error...');
+          createWindow();
+        }
+      }
+    });
   } finally {
     isInitializing = false;
   }

@@ -35,6 +35,10 @@
     "appId": "com.exmc.sistema",
     "productName": "Sistema EXMC",
     "copyright": "Copyright © 2025 Luciano Savoretti (@devpuchito) - Dev/Sistemas/Web",
+    "asar": true,
+    "asarUnpack": [
+      "backend/**/*"
+    ],
     "directories": {
       "output": "dist-electron",
       "buildResources": "electron/assets"

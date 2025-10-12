@@ -15,7 +15,12 @@ const FRONTEND_PORT = 5173;
 // Rutas portables
 const APP_PATH = app.getAppPath();
 const USER_DATA_PATH = app.getPath('userData');
-const POSTGRES_PATH = path.join(APP_PATH, 'postgres');
+
+// PostgreSQL está en resources cuando está empaquetado
+const POSTGRES_PATH = isDev 
+  ? path.join(APP_PATH, 'postgres')  // En dev, junto al código
+  : path.join(process.resourcesPath, 'postgres'); // En producción, en resources
+
 const DATA_PATH = path.join(USER_DATA_PATH, 'data');
 
 // Asegurar que existan los directorios necesarios
@@ -89,12 +94,47 @@ function startPostgresServer(pgBin, pgData, resolve, reject) {
 
 // Iniciar servidor backend
 async function startBackend() {
-  return new Promise((resolve) => {
-    const backendPath = isDev
-      ? path.join(__dirname, '..', 'backend')
-      : path.join(APP_PATH, 'backend');
+  return new Promise((resolve, reject) => {
+    // En producción, los archivos están en diferentes ubicaciones
+    let backendPath;
+    let backendScript;
+    
+    if (isDev) {
+      backendPath = path.join(__dirname, '..', 'backend');
+      backendScript = path.join(backendPath, 'dist', 'index.js');
+    } else {
+      // En producción, buscar en app.asar.unpacked primero, luego en resources
+      const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'backend');
+      const asarPath = path.join(process.resourcesPath, 'app', 'backend');
+      
+      if (fs.existsSync(path.join(unpackedPath, 'dist', 'index.js'))) {
+        backendPath = unpackedPath;
+      } else if (fs.existsSync(path.join(asarPath, 'dist', 'index.js'))) {
+        backendPath = asarPath;
+      } else {
+        // Último intento: buscar en la estructura de recursos
+        backendPath = path.join(APP_PATH, 'backend');
+      }
+      
+      backendScript = path.join(backendPath, 'dist', 'index.js');
+    }
 
-    console.log('Iniciando servidor backend en:', backendPath);
+    console.log('=== BACKEND DEBUG ===');
+    console.log('isDev:', isDev);
+    console.log('backendPath:', backendPath);
+    console.log('backendScript:', backendScript);
+    console.log('script exists:', fs.existsSync(backendScript));
+    console.log('process.resourcesPath:', process.resourcesPath);
+    console.log('APP_PATH:', APP_PATH);
+    console.log('process.execPath:', process.execPath);
+
+    if (!fs.existsSync(backendScript)) {
+      const errorMsg = `Backend script no encontrado en: ${backendScript}`;
+      console.error(errorMsg);
+      dialog.showErrorBox('Error de Backend', errorMsg);
+      reject(new Error(errorMsg));
+      return;
+    }
 
     // Variables de entorno para el backend
     const env = {
@@ -102,38 +142,73 @@ async function startBackend() {
       NODE_ENV: 'production',
       PORT: BACKEND_PORT.toString(),
       DATABASE_URL: isDev
-        ? process.env.DATABASE_URL
+        ? process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/exmc_db'
         : `postgresql://postgres:postgres@localhost:5433/exmc_db`,
       JWT_SECRET: process.env.JWT_SECRET || 'exmc-secret-key-change-in-production',
     };
 
-    const nodePath = isDev ? 'node' : path.join(APP_PATH, 'node.exe');
-    const backendScript = path.join(backendPath, 'dist', 'index.js');
+    console.log('Iniciando backend con:', process.execPath);
 
-    backendProcess = spawn(nodePath, [backendScript], {
+    // Usar process.execPath que apunta al ejecutable de Electron que incluye Node.js
+    backendProcess = spawn(process.execPath, [backendScript], {
       cwd: backendPath,
       env,
       windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
+    let backendReady = false;
+
     backendProcess.stdout?.on('data', (data) => {
-      console.log(`Backend: ${data}`);
+      const message = data.toString();
+      console.log(`Backend stdout: ${message}`);
+      // Resolver cuando el servidor esté listo
+      if (!backendReady && (message.includes('Server running') || message.includes('listening') || message.includes('started'))) {
+        backendReady = true;
+        console.log('Backend ready!');
+        resolve();
+      }
     });
 
     backendProcess.stderr?.on('data', (data) => {
-      console.error(`Backend Error: ${data}`);
+      const message = data.toString();
+      console.error(`Backend stderr: ${message}`);
+      
+      // Si es un error crítico, mostrar diálogo
+      if (message.includes('Error:') || message.includes('Cannot find module')) {
+        dialog.showErrorBox(
+          'Error del Servidor Backend',
+          `No se pudo iniciar el servidor backend:\n\n${message.substring(0, 200)}\n\nPor favor reinstale la aplicación.`
+        );
+      }
     });
 
     backendProcess.on('error', (err) => {
-      console.error('Error al iniciar backend:', err);
+      console.error('Backend process error:', err);
       dialog.showErrorBox(
         'Error del Servidor',
-        'No se pudo iniciar el servidor backend. Por favor reinicie la aplicación.'
+        `No se pudo iniciar el servidor backend:\n${err.message}\n\nPor favor reinicie la aplicación.`
       );
+      reject(err);
     });
 
-    // Esperar a que el backend esté listo
-    setTimeout(resolve, 2000);
+    backendProcess.on('close', (code) => {
+      console.log(`Backend process exited with code ${code}`);
+      if (code !== 0 && code !== null && !backendReady) {
+        dialog.showErrorBox(
+          'Error del Backend',
+          `El servidor backend se cerró inesperadamente (código: ${code})`
+        );
+      }
+    });
+
+    // Timeout de seguridad - resolver después de 5 segundos si no hay respuesta
+    setTimeout(() => {
+      if (!backendReady) {
+        console.log('Backend timeout reached, continuing anyway...');
+        resolve();
+      }
+    }, 5000);
   });
 }
 

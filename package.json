@@ -37,24 +37,28 @@
     "productName": "Sistema EXMC",
     "copyright": "Copyright © 2025 Luciano Savoretti (@devpuchito) - Dev/Sistemas/Web",
     "asar": true,
-    "asarUnpack": [
-      "backend/**/*"
-    ],
     "directories": {
       "output": "dist-electron",
       "buildResources": "electron/assets"
     },
     "files": [
       "electron/**/*",
-      "backend/dist/**/*",
-      "backend/node_modules/**/*",
-      "backend/package.json",
-      "backend/prisma/**/*",
       "frontend/dist/**/*",
       "!**/*.ts",
       "!**/*.map"
     ],
     "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "dist/**/*",
+          "node_modules/**/*",
+          "package.json",
+          "prisma/**/*",
+          "!node_modules/.cache/**/*"
+        ]
+      },
       {
         "from": "postgres-portable",
         "to": "postgres",

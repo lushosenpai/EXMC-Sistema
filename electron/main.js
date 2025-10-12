@@ -253,19 +253,8 @@ async function startBackend() {
       backendPath = path.join(__dirname, '..', 'backend');
       backendScript = path.join(backendPath, 'dist', 'index.js');
     } else {
-      // En producción, buscar en app.asar.unpacked primero, luego en resources
-      const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'backend');
-      const asarPath = path.join(process.resourcesPath, 'app', 'backend');
-      
-      if (fs.existsSync(path.join(unpackedPath, 'dist', 'index.js'))) {
-        backendPath = unpackedPath;
-      } else if (fs.existsSync(path.join(asarPath, 'dist', 'index.js'))) {
-        backendPath = asarPath;
-      } else {
-        // Último intento: buscar en la estructura de recursos
-        backendPath = path.join(APP_PATH, 'backend');
-      }
-      
+      // En producción, el backend está en extraResources directamente
+      backendPath = path.join(process.resourcesPath, 'backend');
       backendScript = path.join(backendPath, 'dist', 'index.js');
     }
 

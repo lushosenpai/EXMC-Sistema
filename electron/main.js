@@ -159,7 +159,6 @@ ipcMain.handle('activate-license', async (event, code) => {
     return { success: false, message: 'Error al activar licencia: ' + error.message };
   }
 });
-});
 
 ipcMain.handle('start-trial', async () => {
   try {

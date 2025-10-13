@@ -42,7 +42,7 @@ app.use('/api', limiter);
 // Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes
+// Routes - IMPORTANTE: Definir ANTES del frontend estático
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
@@ -59,7 +59,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     message: 'Server is running',
-    version: '1.0.0',
+    version: '2.0.0',
     system: 'Sistema EXMC - Gestión Comercial',
     author: {
       name: 'Luciano Savoretti',
@@ -68,6 +68,55 @@ app.get('/api/health', (_req: Request, res: Response) => {
     }
   });
 });
+
+// En producción, servir el frontend desde el backend
+if (process.env.NODE_ENV === 'production') {
+  // Buscar el frontend en diferentes ubicaciones posibles
+  const possiblePaths = [
+    path.join(__dirname, '../../frontend/dist'),           // resources/backend/../frontend/dist
+    path.join(__dirname, '../../../frontend/dist'),        // Si está más arriba
+    path.join(process.cwd(), 'frontend', 'dist'),          // Desde el directorio de trabajo
+  ];
+  
+  let frontendPath = '';
+  for (const p of possiblePaths) {
+    if (require('fs').existsSync(p)) {
+      frontendPath = p;
+      console.log('✅ Frontend encontrado en:', frontendPath);
+      break;
+    } else {
+      console.log('❌ Frontend NO encontrado en:', p);
+    }
+  }
+  
+  if (frontendPath) {
+    // Servir archivos estáticos del frontend
+    app.use(express.static(frontendPath));
+    
+    // Catch-all: Todas las rutas no-API sirven index.html (para SPA routing)
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.join(frontendPath, 'index.html'));
+    });
+  } else {
+    console.error('⚠️ Frontend no encontrado en ninguna ubicación');
+    // Si no hay frontend, al menos dar una respuesta en la raíz
+    app.get('/', (_req: Request, res: Response) => {
+      res.json({
+        success: true,
+        message: 'Sistema EXMC Backend API',
+        version: '2.0.0',
+        endpoints: {
+          health: '/api/health',
+          auth: '/api/auth/*',
+          users: '/api/users/*',
+          products: '/api/products/*',
+          sales: '/api/sales/*',
+          dashboard: '/api/dashboard/*'
+        }
+      });
+    });
+  }
+}
 
 // Error handling middleware
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

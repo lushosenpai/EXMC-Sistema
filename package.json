@@ -60,6 +60,13 @@
         ]
       },
       {
+        "from": "frontend/dist",
+        "to": "frontend/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "postgres-portable",
         "to": "postgres",
         "filter": [

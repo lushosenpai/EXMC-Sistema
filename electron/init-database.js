@@ -9,10 +9,10 @@ const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
 
 const postgresPath = isDev
   ? path.join(__dirname, '..', 'postgres-portable')
-  : path.join(resourcesPath, 'postgres');
+  : path.join(resourcesPath, 'postgres');  // ← CORREGIDO: directamente en resources
 
 const psqlPath = path.join(postgresPath, 'bin', 'psql.exe');
-const port = isDev ? '5432' : '5433';
+const port = isDev ? '5432' : '5433';  // ← Puerto correcto para producción
 
 console.log('🔧 Inicializando base de datos...');
 console.log('📁 PostgreSQL path:', postgresPath);
@@ -89,50 +89,39 @@ async function initializeDatabase() {
     }
 
     // 3. Ejecutar migraciones de Prisma
-    console.log('\n🔄 Aplicando migraciones de Prisma...');
+    console.log('\n🔄 Aplicando migraciones...');
     
     const backendPath = isDev
       ? path.join(__dirname, '..', 'backend')
       : path.join(resourcesPath, 'backend');
     
-    const prismaBinary = path.join(backendPath, 'node_modules', '.bin', 'prisma.cmd');
+    // Buscar archivo SQL de migración directamente
+    const migrationFile = path.join(backendPath, 'prisma', 'migrations', '20251011071546_init', 'migration.sql');
     
-    if (!fs.existsSync(prismaBinary)) {
-      console.error('❌ Prisma CLI no encontrado en:', prismaBinary);
+    console.log('📄 Buscando archivo de migración en:', migrationFile);
+    
+    if (!fs.existsSync(migrationFile)) {
+      console.error('❌ Archivo de migración no encontrado');
       console.log('⚠️ Continuando sin migraciones...');
+      console.log('⚠️ La aplicación puede no funcionar correctamente');
       return;
     }
-
-    const databaseUrl = `postgresql://postgres:postgres@localhost:${port}/exmc_db`;
     
-    return new Promise((resolve) => {
-      const prisma = spawn(prismaBinary, ['migrate', 'deploy'], {
-        cwd: backendPath,
-        env: {
-          ...process.env,
-          DATABASE_URL: databaseUrl,
-          NODE_ENV: 'production'
-        },
-        windowsHide: true,
-        stdio: 'inherit'
-      });
-
-      prisma.on('close', (code) => {
-        if (code === 0) {
-          console.log('\n✅ Migraciones aplicadas correctamente');
-        } else {
-          console.error('\n⚠️ Error al aplicar migraciones (código:', code, ')');
-          console.log('⚠️ La aplicación puede no funcionar correctamente');
-        }
-        resolve();
-      });
-
-      prisma.on('error', (err) => {
-        console.error('\n❌ Error al ejecutar Prisma:', err);
-        console.log('⚠️ La aplicación puede no funcionar correctamente');
-        resolve();
-      });
-    });
+    console.log('✅ Archivo de migración encontrado');
+    
+    // Leer el contenido del archivo SQL
+    const migrationSql = fs.readFileSync(migrationFile, 'utf8');
+    console.log('📊 Aplicando migración SQL...');
+    
+    // Ejecutar el SQL directamente en la base de datos exmc_db
+    const migrationResult = await executeSql(migrationSql, 'exmc_db');
+    
+    if (migrationResult !== null) {
+      console.log('✅ Migraciones aplicadas correctamente');
+    } else {
+      console.log('⚠️ Hubo problemas al aplicar migraciones');
+      console.log('⚠️ Es posible que ya estén aplicadas o que haya un error');
+    }
 
   } catch (err) {
     console.error('❌ Error al inicializar la base de datos:', err);

@@ -2,9 +2,10 @@
 -- SEED COMPLETO: TIENDA DE ROPA "EXMC"
 -- ============================================
 
--- 1. USUARIOS (Ya existe admin, agregamos más usuarios)
+-- 1. USUARIOS (admin + vendedor + consulta)
 INSERT INTO users (id, email, password, name, role, "isActive", "createdAt", "updatedAt")
 VALUES 
+  ('admin-001', 'admin@exmc.com', '$2b$10$dm.tU0jQUVn6BmNiRAcggOwfngqi8UTBIBcocEvBKS.5jC/zvh89S', 'Administrador', 'ADMIN', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('vendedor-001', 'vendedor@exmc.com', '$2b$10$dm.tU0jQUVn6BmNiRAcggOwfngqi8UTBIBcocEvBKS.5jC/zvh89S', 'María González', 'VENDEDOR', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('consulta-001', 'consulta@exmc.com', '$2b$10$dm.tU0jQUVn6BmNiRAcggOwfngqi8UTBIBcocEvBKS.5jC/zvh89S', 'Pedro Ramírez', 'CONSULTA', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (email) DO NOTHING;

@@ -132,31 +132,62 @@ ipcMain.handle('check-license', async () => {
 });
 
 ipcMain.handle('activate-license', async (event, code) => {
-  const result = licenseManager.activateLicense(code);
-  
-  if (result.success) {
-    // Cerrar ventana de licencia y abrir aplicación principal
-    if (licenseWindow) {
-      licenseWindow.close();
+  try {
+    console.log('🔄 Activando licencia...');
+    const result = licenseManager.activateLicense(code);
+    
+    if (result.success) {
+      console.log('✅ Licencia activada exitosamente');
+      // Cerrar ventana de licencia y abrir aplicación principal
+      if (licenseWindow) {
+        licenseWindow.close();
+        licenseWindow = null;
+      }
+      
+      // Dar tiempo para que se cierre la ventana
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('🚀 Inicializando aplicación principal...');
+      await initializeApp();
+    } else {
+      console.error('❌ Error al activar licencia:', result.message);
     }
-    await initializeApp();
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Error crítico en activate-license:', error);
+    return { success: false, message: 'Error al activar licencia: ' + error.message };
   }
-  
-  return result;
+});
 });
 
 ipcMain.handle('start-trial', async () => {
-  const result = licenseManager.startTrial();
-  
-  if (result.success) {
-    // Cerrar ventana de licencia y abrir aplicación principal
-    if (licenseWindow) {
-      licenseWindow.close();
+  try {
+    console.log('🔄 Iniciando período de prueba...');
+    const result = licenseManager.startTrial();
+    
+    if (result.success) {
+      console.log('✅ Período de prueba activado exitosamente');
+      // Cerrar ventana de licencia y abrir aplicación principal
+      if (licenseWindow) {
+        licenseWindow.close();
+        licenseWindow = null;
+      }
+      
+      // Dar tiempo para que se cierre la ventana
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log('🚀 Inicializando aplicación principal...');
+      await initializeApp();
+    } else {
+      console.error('❌ Error al activar período de prueba:', result.message);
     }
-    await initializeApp();
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Error crítico en start-trial:', error);
+    return { success: false, message: 'Error al iniciar período de prueba: ' + error.message };
   }
-  
-  return result;
 });
 
 ipcMain.handle('get-machine-id', async () => {

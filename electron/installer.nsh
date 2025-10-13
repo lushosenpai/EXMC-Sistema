@@ -45,6 +45,12 @@
   FileWrite $0 "═══════════════════════════════════════════════════$\r$\n"
   FileClose $0
   
+  ; Configurar firewall de Windows
+  DetailPrint "Configurando reglas de firewall..."
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Sistema EXMC" dir=in action=allow program="$INSTDIR\Sistema EXMC.exe" enable=yes profile=any'
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Sistema EXMC Backend" dir=in action=allow protocol=TCP localport=3001 profile=any'
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Sistema EXMC PostgreSQL" dir=in action=allow protocol=TCP localport=5433 profile=any'
+  
   ; Crear acceso directo a Instagram
   FileOpen $0 "$INSTDIR\Instagram @devpuchito.url" w
   FileWrite $0 "[InternetShortcut]$\r$\n"
@@ -73,4 +79,12 @@
 !macro customInit
   ; Mensaje al iniciar el instalador
   MessageBox MB_ICONINFORMATION "Sistema EXMC v2.0.0$\r$\n$\r$\nDesarrollado por:$\r$\nLuciano Savoretti$\r$\n@devpuchito$\r$\n$\r$\nSistema de Gestión Comercial con Licencias"
+!macroend
+
+!macro customUninstall
+  ; Eliminar reglas de firewall
+  DetailPrint "Eliminando reglas de firewall..."
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Sistema EXMC"'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Sistema EXMC Backend"'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Sistema EXMC PostgreSQL"'
 !macroend

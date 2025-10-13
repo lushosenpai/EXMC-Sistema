@@ -625,7 +625,18 @@ async function initializeApp() {
         console.warn('⚠️ Continuando sin PostgreSQL...');
       }
       
-      // 2. Iniciar servidor backend
+      // 2. Inicializar base de datos (crear exmc_db y ejecutar migraciones)
+      console.log('🔧 Inicializando base de datos...');
+      try {
+        const { initializeDatabase } = require(path.join(__dirname, 'init-database.js'));
+        await initializeDatabase();
+        console.log('✅ Base de datos inicializada correctamente');
+      } catch (err) {
+        console.error('❌ Error al inicializar base de datos:', err.message);
+        console.warn('⚠️ Continuando sin inicialización de BD...');
+      }
+      
+      // 3. Iniciar servidor backend
       console.log('🚀 Intentando iniciar backend...');
       try {
         await startBackend();
@@ -639,12 +650,12 @@ async function initializeApp() {
       console.log('Usando PostgreSQL instalado en el sistema (puerto 5432)');
     }
 
-    // 3. Crear ventana principal
+    // 4. Crear ventana principal
     console.log('Creando ventana principal...');
     createWindow();
     console.log('Ventana principal creada');
 
-    // 4. Crear icono de bandeja
+    // 5. Crear icono de bandeja
     console.log('Creando icono de bandeja...');
     createTray();
     console.log('Icono de bandeja creado');

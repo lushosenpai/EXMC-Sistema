@@ -209,7 +209,7 @@ ipcMain.on('minimize-app', () => {
 
 // Iniciar PostgreSQL portable
 async function startPostgres() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (!fs.existsSync(POSTGRES_PATH)) {
       console.log('PostgreSQL no encontrado en:', POSTGRES_PATH);
       // En producción, PostgreSQL debe estar incluido
@@ -228,21 +228,54 @@ async function startPostgres() {
     const pgBin = path.join(POSTGRES_PATH, 'bin', 'pg_ctl.exe');
     const pgData = path.join(DATA_PATH, 'pgdata');
 
+    // Verificar si PostgreSQL ya está corriendo (de otra instalación)
+    console.log('🔍 Verificando disponibilidad del puerto 5433...');
+    const portInUse = await checkPort(5433);
+    
+    if (portInUse) {
+      console.log('⚠️ Puerto 5433 ocupado, intentando detener instancia previa...');
+      try {
+        // Intentar detener la instancia anterior
+        await stopPostgres();
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2s
+        
+        const stillInUse = await checkPort(5433);
+        if (stillInUse) {
+          console.error('❌ Puerto 5433 sigue ocupado por otro proceso');
+          // Intentar con otro puerto
+          console.log('🔄 Intentando puerto alternativo 5434...');
+          process.env.POSTGRES_PORT = '5434';
+          // Actualizar DATABASE_URL para Prisma
+          process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5434/exmc_db';
+        }
+      } catch (err) {
+        console.error('Error al detener instancia previa:', err.message);
+      }
+    }
+
     // Inicializar base de datos si no existe
     if (!fs.existsSync(pgData)) {
       console.log('Inicializando base de datos PostgreSQL...');
       const initdb = spawn(
         path.join(POSTGRES_PATH, 'bin', 'initdb.exe'),
-        ['-D', pgData, '-U', 'postgres', '--encoding=UTF8'],
+        ['-D', pgData, '-U', 'postgres', '--encoding=UTF8', '--locale=C'],
         { windowsHide: true }
       );
+
+      initdb.stdout.on('data', (data) => console.log('initdb:', data.toString()));
+      initdb.stderr.on('data', (data) => console.error('initdb error:', data.toString()));
 
       initdb.on('close', (code) => {
         if (code === 0) {
           startPostgresServer(pgBin, pgData, resolve, reject);
         } else {
-          reject(new Error('Error al inicializar PostgreSQL'));
+          reject(new Error('Error al inicializar PostgreSQL (código ' + code + ')'));
         }
+      });
+      
+      initdb.on('error', (err) => {
+        console.error('❌ Error al ejecutar initdb:', err);
+        reject(new Error('No se pudo ejecutar initdb.exe'));
       });
     } else {
       startPostgresServer(pgBin, pgData, resolve, reject);
@@ -250,25 +283,70 @@ async function startPostgres() {
   });
 }
 
+// Helper: Verificar si un puerto está en uso
+function checkPort(port) {
+  return new Promise((resolve) => {
+    const net = require('net');
+    const tester = net.createServer()
+      .once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          resolve(true); // Puerto en uso
+        } else {
+          resolve(false);
+        }
+      })
+      .once('listening', () => {
+        tester.once('close', () => resolve(false)) // Puerto libre
+          .close();
+      })
+      .listen(port, 'localhost');
+  });
+}
+
 function startPostgresServer(pgBin, pgData, resolve, reject) {
-  console.log('Iniciando servidor PostgreSQL...');
+  const pgPort = process.env.POSTGRES_PORT || '5433';
+  console.log(`Iniciando servidor PostgreSQL en puerto ${pgPort}...`);
   
   postgresProcess = spawn(
     pgBin,
-    ['start', '-D', pgData, '-o', '-p 5433 -k ""'],
-    { windowsHide: true }
+    ['start', '-D', pgData, '-o', `-p ${pgPort} -k ""`],
+    { 
+      windowsHide: true,
+      stdio: 'pipe'
+    }
   );
+
+  postgresProcess.stdout.on('data', (data) => {
+    console.log('PostgreSQL stdout:', data.toString().trim());
+  });
+
+  postgresProcess.stderr.on('data', (data) => {
+    const msg = data.toString().trim();
+    if (msg.includes('already running') || msg.includes('server starting')) {
+      console.log('✅ PostgreSQL ya está corriendo o iniciándose');
+    } else if (msg.includes('could not bind') || msg.includes('Address already in use')) {
+      console.error('❌ Puerto ocupado:', msg);
+    } else {
+      console.log('PostgreSQL stderr:', msg);
+    }
+  });
 
   // Esperar a que PostgreSQL esté listo
   setTimeout(() => {
-    console.log('✅ PostgreSQL debería estar listo (timeout 2s)');
+    console.log(`✅ PostgreSQL debería estar listo en puerto ${pgPort}`);
     resolve();
-  }, 2000); // Reducido a 2 segundos
+  }, 3000); // 3 segundos de espera
 
   postgresProcess.on('error', (err) => {
     console.error('❌ Error al iniciar PostgreSQL:', err);
-    // No rechazar, solo log - la app puede continuar
-    console.log('Continuando sin PostgreSQL...');
+    console.log('⚠️ Continuando sin PostgreSQL...');
+    resolve(); // No rechazar, permitir que la app continúe
+  });
+  
+  postgresProcess.on('exit', (code, signal) => {
+    if (code !== 0 && code !== null) {
+      console.error(`❌ PostgreSQL terminó con código ${code}`);
+    }
   });
 }
 
@@ -326,13 +404,14 @@ async function startBackend() {
     console.log('✅ Backend script encontrado!');
 
     // Variables de entorno para el backend
+    const pgPort = process.env.POSTGRES_PORT || '5433';
     const env = {
       ...process.env,
       NODE_ENV: 'production',
       PORT: BACKEND_PORT.toString(),
       DATABASE_URL: isDev
         ? process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/exmc_db'
-        : `postgresql://postgres:postgres@localhost:5433/exmc_db`,
+        : `postgresql://postgres:postgres@localhost:${pgPort}/exmc_db`,
       JWT_SECRET: process.env.JWT_SECRET || 'exmc-secret-key-change-in-production',
     };
 
@@ -658,18 +737,24 @@ async function initializeApp() {
       // 2. Inicializar base de datos INLINE (crear exmc_db y ejecutar migraciones)
       console.log('🔧 Inicializando base de datos...');
       try {
+        const pgPort = process.env.POSTGRES_PORT || '5433';
         const psqlPath = path.join(process.resourcesPath, 'postgres', 'bin', 'psql.exe');
         const migrationFile = path.join(process.resourcesPath, 'backend', 'prisma', 'migrations', '20251011071546_init', 'migration.sql');
         
         console.log('📁 psql:', psqlPath, '→', fs.existsSync(psqlPath));
         console.log('📄 migration:', migrationFile, '→', fs.existsSync(migrationFile));
+        console.log('🔌 Puerto PostgreSQL:', pgPort);
         
         if (fs.existsSync(psqlPath) && fs.existsSync(migrationFile)) {
+          // Esperar a que PostgreSQL esté realmente listo
+          console.log('⏳ Esperando a PostgreSQL...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
           // Crear base de datos si no existe
           console.log('🗄️ Creando base de datos exmc_db...');
           const createDb = spawn(psqlPath, [
             '-h', 'localhost',
-            '-p', '5433',
+            '-p', pgPort,
             '-U', 'postgres',
             '-d', 'postgres',
             '-c', 'CREATE DATABASE exmc_db'
@@ -692,7 +777,7 @@ async function initializeApp() {
           const migrationSql = fs.readFileSync(migrationFile, 'utf8');
           const migrate = spawn(psqlPath, [
             '-h', 'localhost',
-            '-p', '5433',
+            '-p', pgPort,
             '-U', 'postgres',
             '-d', 'exmc_db',
             '-f', migrationFile
@@ -721,7 +806,7 @@ async function initializeApp() {
           if (fs.existsSync(fixSchemaFile)) {
             const fixSchema = spawn(psqlPath, [
               '-h', 'localhost',
-              '-p', '5433',
+              '-p', pgPort,
               '-U', 'postgres',
               '-d', 'exmc_db',
               '-f', fixSchemaFile
@@ -751,7 +836,7 @@ async function initializeApp() {
           if (fs.existsSync(seedCompleteFile)) {
             const seedComplete = spawn(psqlPath, [
               '-h', 'localhost',
-              '-p', '5433',
+              '-p', pgPort,
               '-U', 'postgres',
               '-d', 'exmc_db',
               '-f', seedCompleteFile

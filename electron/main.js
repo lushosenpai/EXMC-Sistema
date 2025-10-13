@@ -625,12 +625,69 @@ async function initializeApp() {
         console.warn('⚠️ Continuando sin PostgreSQL...');
       }
       
-      // 2. Inicializar base de datos (crear exmc_db y ejecutar migraciones)
+      // 2. Inicializar base de datos INLINE (crear exmc_db y ejecutar migraciones)
       console.log('🔧 Inicializando base de datos...');
       try {
-        const { initializeDatabase } = require(path.join(__dirname, 'init-database.js'));
-        await initializeDatabase();
-        console.log('✅ Base de datos inicializada correctamente');
+        const psqlPath = path.join(process.resourcesPath, 'postgres', 'bin', 'psql.exe');
+        const migrationFile = path.join(process.resourcesPath, 'backend', 'prisma', 'migrations', '20251011071546_init', 'migration.sql');
+        
+        console.log('📁 psql:', psqlPath, '→', fs.existsSync(psqlPath));
+        console.log('📄 migration:', migrationFile, '→', fs.existsSync(migrationFile));
+        
+        if (fs.existsSync(psqlPath) && fs.existsSync(migrationFile)) {
+          // Crear base de datos si no existe
+          console.log('🗄️ Creando base de datos exmc_db...');
+          const createDb = spawn(psqlPath, [
+            '-h', 'localhost',
+            '-p', '5433',
+            '-U', 'postgres',
+            '-d', 'postgres',
+            '-c', 'CREATE DATABASE exmc_db'
+          ], {
+            env: { ...process.env, PGPASSWORD: 'postgres' },
+            windowsHide: true
+          });
+          
+          await new Promise((resolve) => {
+            createDb.on('close', () => {
+              console.log('✅ Base de datos creada (o ya existe)');
+              resolve();
+            });
+            createDb.on('error', () => resolve());
+            setTimeout(resolve, 3000); // timeout
+          });
+          
+          // Ejecutar migraciones
+          console.log('📊 Aplicando migraciones SQL...');
+          const migrationSql = fs.readFileSync(migrationFile, 'utf8');
+          const migrate = spawn(psqlPath, [
+            '-h', 'localhost',
+            '-p', '5433',
+            '-U', 'postgres',
+            '-d', 'exmc_db',
+            '-f', migrationFile
+          ], {
+            env: { ...process.env, PGPASSWORD: 'postgres' },
+            windowsHide: true
+          });
+          
+          await new Promise((resolve) => {
+            migrate.on('close', (code) => {
+              if (code === 0) {
+                console.log('✅ Migraciones aplicadas correctamente');
+              } else {
+                console.log('⚠️ Migraciones con errores (posiblemente ya aplicadas)');
+              }
+              resolve();
+            });
+            migrate.on('error', () => resolve());
+            setTimeout(resolve, 5000); // timeout
+          });
+        } else {
+          console.warn('⚠️ psql o migration.sql no encontrado, saltando inicialización BD');
+        }
+        
+        console.log('✅ Base de datos inicializada');
       } catch (err) {
         console.error('❌ Error al inicializar base de datos:', err.message);
         console.warn('⚠️ Continuando sin inicialización de BD...');

@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -16,19 +16,13 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      Role     @default(VENDEDOR)
+  role      String   @default("VENDEDOR") // ADMIN, VENDEDOR, CONSULTA
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sales     Sale[]
 
   @@map("users")
-}
-
-enum Role {
-  ADMIN
-  VENDEDOR
-  CONSULTA
 }
 
 // Modelo de Proveedores
@@ -40,7 +34,7 @@ model Supplier {
   address      String?
   city         String?
   province     String?
-  observations String?   @db.Text
+  observations String?
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -63,7 +57,7 @@ model Product {
   image              String?
   stock              Int             @default(0)
   minStock           Int             @default(5)
-  description        String?         @db.Text
+  description        String?
   isActive           Boolean         @default(true)
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
@@ -81,10 +75,10 @@ model Customer {
   email           String?
   address         String?
   cuitDni         String?             @unique
-  accountType     AccountType         @default(EFECTIVO)
+  accountType     String              @default("EFECTIVO") // EFECTIVO, CUENTA_CORRIENTE
   creditLimit     Float               @default(0)
   currentBalance  Float               @default(0)
-  observations    String?             @db.Text
+  observations    String?
   isActive        Boolean             @default(true)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
@@ -92,11 +86,6 @@ model Customer {
   accountPayments CustomerPayment[]
 
   @@map("customers")
-}
-
-enum AccountType {
-  EFECTIVO
-  CUENTA_CORRIENTE
 }
 
 // Modelo de Pagos de Cuenta Corriente de Clientes
@@ -127,31 +116,17 @@ model Sale {
   discount      Float        @default(0)
   extraPercent  Float        @default(0)
   total         Float
-  paymentMethod PaymentMethod?
+  paymentMethod String?      // EFECTIVO, TRANSFERENCIA, TARJETA_CREDITO, TARJETA_DEBITO, CUENTA_CORRIENTE
   amountPaid    Float?
   change        Float?
-  status        SaleStatus   @default(COMPLETADA)
-  observations  String?      @db.Text
+  status        String       @default("COMPLETADA") // PENDIENTE, COMPLETADA, CANCELADA
+  observations  String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   items         SaleItem[]
   payments      Payment[]
 
   @@map("sales")
-}
-
-enum PaymentMethod {
-  EFECTIVO
-  TRANSFERENCIA
-  TARJETA_CREDITO
-  TARJETA_DEBITO
-  CUENTA_CORRIENTE
-}
-
-enum SaleStatus {
-  PENDIENTE
-  COMPLETADA
-  CANCELADA
 }
 
 // Modelo de Items de Venta
@@ -171,38 +146,31 @@ model SaleItem {
 
 // Modelo de Pagos
 model Payment {
-  id            String        @id @default(uuid())
+  id            String   @id @default(uuid())
   saleId        String
-  sale          Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   amount        Float
-  paymentMethod PaymentMethod
+  paymentMethod String   // EFECTIVO, TRANSFERENCIA, TARJETA_CREDITO, TARJETA_DEBITO, CUENTA_CORRIENTE
   reference     String?
-  createdAt     DateTime      @default(now())
+  createdAt     DateTime @default(now())
 
   @@map("payments")
 }
 
 // Modelo de Movimientos de Stock
 model StockMovement {
-  id          String       @id @default(uuid())
-  productId   String
-  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
-  type        MovementType
-  quantity    Int
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          String   // ENTRADA, SALIDA, AJUSTE, VENTA
+  quantity      Int
   previousStock Int
-  newStock    Int
-  reason      String?
-  reference   String?
-  createdAt   DateTime     @default(now())
+  newStock      Int
+  reason        String?
+  reference     String?
+  createdAt     DateTime @default(now())
 
   @@map("stock_movements")
-}
-
-enum MovementType {
-  ENTRADA
-  SALIDA
-  AJUSTE
-  VENTA
 }
 
 // Modelo de Configuración

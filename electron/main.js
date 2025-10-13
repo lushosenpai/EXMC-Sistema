@@ -9,7 +9,6 @@ let mainWindow;
 let licenseWindow;
 let tray;
 let backendProcess;
-let postgresProcess;
 let licenseManager;
 let isInitializing = false; // Flag para evitar inicializaciones múltiples
 let appInitialized = false; // Flag para saber si ya se inicializó
@@ -21,10 +20,8 @@ const FRONTEND_PORT = 5173;
 const APP_PATH = app.getAppPath();
 const USER_DATA_PATH = app.getPath('userData');
 
-// PostgreSQL está en resources cuando está empaquetado
-const POSTGRES_PATH = isDev 
-  ? path.join(APP_PATH, 'postgres')  // En dev, junto al código
-  : path.join(process.resourcesPath, 'postgres'); // En producción, en resources
+// SQLite database path (portable y sin conflictos)
+const DATABASE_PATH = path.join(DATA_PATH, 'exmc.db');
 
 const DATA_PATH = path.join(USER_DATA_PATH, 'data');
 
@@ -32,6 +29,8 @@ const DATA_PATH = path.join(USER_DATA_PATH, 'data');
 if (!fs.existsSync(DATA_PATH)) {
   fs.mkdirSync(DATA_PATH, { recursive: true });
 }
+
+console.log('📁 Ruta de base de datos SQLite:', DATABASE_PATH);
 
 // Inicializar el gestor de licencias
 licenseManager = new LicenseManager();
@@ -207,148 +206,9 @@ ipcMain.on('minimize-app', () => {
 // FIN SISTEMA DE LICENCIAS
 // ============================================
 
-// Iniciar PostgreSQL portable
-async function startPostgres() {
-  return new Promise(async (resolve, reject) => {
-    if (!fs.existsSync(POSTGRES_PATH)) {
-      console.log('PostgreSQL no encontrado en:', POSTGRES_PATH);
-      // En producción, PostgreSQL debe estar incluido
-      if (!isDev) {
-        dialog.showErrorBox(
-          'Error de PostgreSQL',
-          'No se encontró PostgreSQL. Por favor reinstale la aplicación.'
-        );
-        app.quit();
-        return;
-      }
-      resolve(); // En desarrollo, usar PostgreSQL del sistema
-      return;
-    }
-
-    const pgBin = path.join(POSTGRES_PATH, 'bin', 'pg_ctl.exe');
-    const pgData = path.join(DATA_PATH, 'pgdata');
-
-    // Verificar si PostgreSQL ya está corriendo (de otra instalación)
-    console.log('🔍 Verificando disponibilidad del puerto 5433...');
-    const portInUse = await checkPort(5433);
-    
-    if (portInUse) {
-      console.log('⚠️ Puerto 5433 ocupado, intentando detener instancia previa...');
-      try {
-        // Intentar detener la instancia anterior
-        await stopPostgres();
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2s
-        
-        const stillInUse = await checkPort(5433);
-        if (stillInUse) {
-          console.error('❌ Puerto 5433 sigue ocupado por otro proceso');
-          // Intentar con otro puerto
-          console.log('🔄 Intentando puerto alternativo 5434...');
-          process.env.POSTGRES_PORT = '5434';
-          // Actualizar DATABASE_URL para Prisma
-          process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5434/exmc_db';
-        }
-      } catch (err) {
-        console.error('Error al detener instancia previa:', err.message);
-      }
-    }
-
-    // Inicializar base de datos si no existe
-    if (!fs.existsSync(pgData)) {
-      console.log('Inicializando base de datos PostgreSQL...');
-      const initdb = spawn(
-        path.join(POSTGRES_PATH, 'bin', 'initdb.exe'),
-        ['-D', pgData, '-U', 'postgres', '--encoding=UTF8', '--locale=C'],
-        { windowsHide: true }
-      );
-
-      initdb.stdout.on('data', (data) => console.log('initdb:', data.toString()));
-      initdb.stderr.on('data', (data) => console.error('initdb error:', data.toString()));
-
-      initdb.on('close', (code) => {
-        if (code === 0) {
-          startPostgresServer(pgBin, pgData, resolve, reject);
-        } else {
-          reject(new Error('Error al inicializar PostgreSQL (código ' + code + ')'));
-        }
-      });
-      
-      initdb.on('error', (err) => {
-        console.error('❌ Error al ejecutar initdb:', err);
-        reject(new Error('No se pudo ejecutar initdb.exe'));
-      });
-    } else {
-      startPostgresServer(pgBin, pgData, resolve, reject);
-    }
-  });
-}
-
-// Helper: Verificar si un puerto está en uso
-function checkPort(port) {
-  return new Promise((resolve) => {
-    const net = require('net');
-    const tester = net.createServer()
-      .once('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          resolve(true); // Puerto en uso
-        } else {
-          resolve(false);
-        }
-      })
-      .once('listening', () => {
-        tester.once('close', () => resolve(false)) // Puerto libre
-          .close();
-      })
-      .listen(port, 'localhost');
-  });
-}
-
-function startPostgresServer(pgBin, pgData, resolve, reject) {
-  const pgPort = process.env.POSTGRES_PORT || '5433';
-  console.log(`Iniciando servidor PostgreSQL en puerto ${pgPort}...`);
-  
-  postgresProcess = spawn(
-    pgBin,
-    ['start', '-D', pgData, '-o', `-p ${pgPort} -k ""`],
-    { 
-      windowsHide: true,
-      stdio: 'pipe'
-    }
-  );
-
-  postgresProcess.stdout.on('data', (data) => {
-    console.log('PostgreSQL stdout:', data.toString().trim());
-  });
-
-  postgresProcess.stderr.on('data', (data) => {
-    const msg = data.toString().trim();
-    if (msg.includes('already running') || msg.includes('server starting')) {
-      console.log('✅ PostgreSQL ya está corriendo o iniciándose');
-    } else if (msg.includes('could not bind') || msg.includes('Address already in use')) {
-      console.error('❌ Puerto ocupado:', msg);
-    } else {
-      console.log('PostgreSQL stderr:', msg);
-    }
-  });
-
-  // Esperar a que PostgreSQL esté listo
-  setTimeout(() => {
-    console.log(`✅ PostgreSQL debería estar listo en puerto ${pgPort}`);
-    resolve();
-  }, 3000); // 3 segundos de espera
-
-  postgresProcess.on('error', (err) => {
-    console.error('❌ Error al iniciar PostgreSQL:', err);
-    console.log('⚠️ Continuando sin PostgreSQL...');
-    resolve(); // No rechazar, permitir que la app continúe
-  });
-  
-  postgresProcess.on('exit', (code, signal) => {
-    if (code !== 0 && code !== null) {
-      console.error(`❌ PostgreSQL terminó con código ${code}`);
-    }
-  });
-}
+// ============================================
+// FUNCIONES DEL BACKEND
+// ============================================
 
 // Iniciar servidor backend
 async function startBackend() {
@@ -404,18 +264,18 @@ async function startBackend() {
     console.log('✅ Backend script encontrado!');
 
     // Variables de entorno para el backend
-    const pgPort = process.env.POSTGRES_PORT || '5433';
     const env = {
       ...process.env,
       NODE_ENV: 'production',
       PORT: BACKEND_PORT.toString(),
       DATABASE_URL: isDev
-        ? process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/exmc_db'
-        : `postgresql://postgres:postgres@localhost:${pgPort}/exmc_db`,
+        ? process.env.DATABASE_URL || 'file:./dev.db'
+        : `file:${DATABASE_PATH}`,
       JWT_SECRET: process.env.JWT_SECRET || 'exmc-secret-key-change-in-production',
     };
 
     console.log('Iniciando backend...');
+    console.log('DATABASE_URL:', env.DATABASE_URL);
 
     // En Electron, usar fork para ejecutar scripts Node.js
     // Esto usa el Node.js embebido de Electron sin conflictos de instancia
@@ -717,180 +577,37 @@ async function initializeApp() {
   }
   
   isInitializing = true;
-  console.log('Iniciando Sistema EXMC...');
+  console.log('🚀 Iniciando Sistema EXMC...');
   console.log('Modo:', isDev ? 'DESARROLLO' : 'PRODUCCIÓN');
   
   try {
-    // En desarrollo, backend y frontend se inician con concurrently
-    // Solo iniciamos backend automáticamente en producción
+    // Con SQLite, NO hay que iniciar servidor de base de datos
+    // Prisma se encarga de TODO automáticamente
+    
     if (!isDev) {
-      // 1. Iniciar PostgreSQL portable (SOLO EN PRODUCCIÓN)
-      console.log('📊 Iniciando PostgreSQL portable...');
-      try {
-        await startPostgres();
-        console.log('✅ PostgreSQL iniciado correctamente');
-      } catch (err) {
-        console.error('❌ Error al iniciar PostgreSQL:', err.message);
-        console.warn('⚠️ Continuando sin PostgreSQL...');
-      }
+      // 1. Configurar ruta de base de datos SQLite
+      console.log('� Base de datos SQLite:', DATABASE_PATH);
+      process.env.DATABASE_URL = `file:${DATABASE_PATH}`;
       
-      // 2. Inicializar base de datos INLINE (crear exmc_db y ejecutar migraciones)
-      console.log('🔧 Inicializando base de datos...');
-      try {
-        const pgPort = process.env.POSTGRES_PORT || '5433';
-        const psqlPath = path.join(process.resourcesPath, 'postgres', 'bin', 'psql.exe');
-        const migrationFile = path.join(process.resourcesPath, 'backend', 'prisma', 'migrations', '20251011071546_init', 'migration.sql');
-        
-        console.log('📁 psql:', psqlPath, '→', fs.existsSync(psqlPath));
-        console.log('📄 migration:', migrationFile, '→', fs.existsSync(migrationFile));
-        console.log('🔌 Puerto PostgreSQL:', pgPort);
-        
-        if (fs.existsSync(psqlPath) && fs.existsSync(migrationFile)) {
-          // Esperar a que PostgreSQL esté realmente listo
-          console.log('⏳ Esperando a PostgreSQL...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Crear base de datos si no existe
-          console.log('🗄️ Creando base de datos exmc_db...');
-          const createDb = spawn(psqlPath, [
-            '-h', 'localhost',
-            '-p', pgPort,
-            '-U', 'postgres',
-            '-d', 'postgres',
-            '-c', 'CREATE DATABASE exmc_db'
-          ], {
-            env: { ...process.env, PGPASSWORD: 'postgres' },
-            windowsHide: true
-          });
-          
-          await new Promise((resolve) => {
-            createDb.on('close', () => {
-              console.log('✅ Base de datos creada (o ya existe)');
-              resolve();
-            });
-            createDb.on('error', () => resolve());
-            setTimeout(resolve, 3000); // timeout
-          });
-          
-          // Ejecutar migraciones
-          console.log('📊 Aplicando migraciones SQL...');
-          const migrationSql = fs.readFileSync(migrationFile, 'utf8');
-          const migrate = spawn(psqlPath, [
-            '-h', 'localhost',
-            '-p', pgPort,
-            '-U', 'postgres',
-            '-d', 'exmc_db',
-            '-f', migrationFile
-          ], {
-            env: { ...process.env, PGPASSWORD: 'postgres' },
-            windowsHide: true
-          });
-          
-          await new Promise((resolve) => {
-            migrate.on('close', (code) => {
-              if (code === 0) {
-                console.log('✅ Migraciones aplicadas correctamente');
-              } else {
-                console.log('⚠️ Migraciones con errores (posiblemente ya aplicadas)');
-              }
-              resolve();
-            });
-            migrate.on('error', () => resolve());
-            setTimeout(resolve, 5000); // timeout
-          });
-          
-          // Ejecutar fix de schema (agregar campos faltantes)
-          console.log('🔧 Aplicando correcciones de schema...');
-          const fixSchemaFile = path.join(process.resourcesPath, 'backend', 'prisma', 'fix-schema.sql');
-          
-          if (fs.existsSync(fixSchemaFile)) {
-            const fixSchema = spawn(psqlPath, [
-              '-h', 'localhost',
-              '-p', pgPort,
-              '-U', 'postgres',
-              '-d', 'exmc_db',
-              '-f', fixSchemaFile
-            ], {
-              env: { ...process.env, PGPASSWORD: 'postgres' },
-              windowsHide: true
-            });
-            
-            await new Promise((resolve) => {
-              fixSchema.on('close', (code) => {
-                if (code === 0) {
-                  console.log('✅ Schema actualizado correctamente');
-                } else {
-                  console.log('⚠️ Schema con advertencias (posiblemente ya actualizado)');
-                }
-                resolve();
-              });
-              fixSchema.on('error', () => resolve());
-              setTimeout(resolve, 3000);
-            });
-          }
-          
-          // Ejecutar seed completo (usuarios, productos, clientes, ventas de prueba)
-          console.log('🌱 Cargando datos de prueba (tienda de ropa)...');
-          const seedCompleteFile = path.join(process.resourcesPath, 'backend', 'prisma', 'seed-complete.sql');
-          
-          if (fs.existsSync(seedCompleteFile)) {
-            const seedComplete = spawn(psqlPath, [
-              '-h', 'localhost',
-              '-p', pgPort,
-              '-U', 'postgres',
-              '-d', 'exmc_db',
-              '-f', seedCompleteFile
-            ], {
-              env: { ...process.env, PGPASSWORD: 'postgres' },
-              windowsHide: true
-            });
-            
-            await new Promise((resolve) => {
-              seedComplete.on('close', (code) => {
-                if (code === 0) {
-                  console.log('✅ Datos de prueba cargados: 3 usuarios, 4 proveedores, 20 productos, 6 clientes, 5 ventas');
-                  console.log('   👤 Usuarios: admin@exmc.com, vendedor@exmc.com, consulta@exmc.com (password: admin123)');
-                } else {
-                  console.log('⚠️ Algunos datos ya existen (normal en reinicios)');
-                }
-                resolve();
-              });
-              seedComplete.on('error', () => resolve());
-              setTimeout(resolve, 5000);
-            });
-          } else {
-            console.log('⚠️ Archivo seed-complete.sql no encontrado');
-          }
-        } else {
-          console.warn('⚠️ psql o migration.sql no encontrado, saltando inicialización BD');
-        }
-        
-        console.log('✅ Base de datos inicializada');
-      } catch (err) {
-        console.error('❌ Error al inicializar base de datos:', err.message);
-        console.warn('⚠️ Continuando sin inicialización de BD...');
-      }
-      
-      // 3. Iniciar servidor backend
-      console.log('🚀 Intentando iniciar backend...');
+      // 2. Iniciar servidor backend (Prisma migrará automáticamente)
+      console.log('🚀 Iniciando backend...');
       try {
         await startBackend();
         console.log('✅ Backend iniciado correctamente');
       } catch (err) {
         console.error('❌ Error al iniciar backend:', err.message);
-        console.warn('⚠️ Continuando sin backend - se usará fallback a archivos locales');
+        throw err; // Si el backend falla, no podemos continuar
       }
     } else {
       console.log('Modo desarrollo: Backend y Frontend gestionados por concurrently');
-      console.log('Usando PostgreSQL instalado en el sistema (puerto 5432)');
     }
 
-    // 4. Crear ventana principal
+    // 3. Crear ventana principal
     console.log('Creando ventana principal...');
     createWindow();
     console.log('Ventana principal creada');
 
-    // 5. Crear icono de bandeja
+    // 4. Crear icono de bandeja
     console.log('Creando icono de bandeja...');
     createTray();
     console.log('Icono de bandeja creado');

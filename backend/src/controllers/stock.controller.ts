@@ -1,9 +1,12 @@
 import { Response, NextFunction } from 'express';
-import { PrismaClient, MovementType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { ValidationError, NotFoundError } from '../utils/errors';
 
 const prisma = new PrismaClient();
+
+// Tipos de movimiento (ya no son enum en SQLite)
+type MovementType = 'ENTRADA' | 'SALIDA' | 'AJUSTE' | 'VENTA';
 
 // Obtener movimientos de stock
 export const getStockMovements = async (

@@ -19,11 +19,10 @@ const FRONTEND_PORT = 5173;
 // Rutas portables
 const APP_PATH = app.getAppPath();
 const USER_DATA_PATH = app.getPath('userData');
+const DATA_PATH = path.join(USER_DATA_PATH, 'data');
 
 // SQLite database path (portable y sin conflictos)
 const DATABASE_PATH = path.join(DATA_PATH, 'exmc.db');
-
-const DATA_PATH = path.join(USER_DATA_PATH, 'data');
 
 // Asegurar que existan los directorios necesarios
 if (!fs.existsSync(DATA_PATH)) {

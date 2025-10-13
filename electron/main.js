@@ -683,6 +683,38 @@ async function initializeApp() {
             migrate.on('error', () => resolve());
             setTimeout(resolve, 5000); // timeout
           });
+          
+          // Ejecutar seed del usuario administrador
+          console.log('👤 Creando usuario administrador...');
+          const seedFile = path.join(process.resourcesPath, 'backend', 'prisma', 'seed-admin.sql');
+          
+          if (fs.existsSync(seedFile)) {
+            const seed = spawn(psqlPath, [
+              '-h', 'localhost',
+              '-p', '5433',
+              '-U', 'postgres',
+              '-d', 'exmc_db',
+              '-f', seedFile
+            ], {
+              env: { ...process.env, PGPASSWORD: 'postgres' },
+              windowsHide: true
+            });
+            
+            await new Promise((resolve) => {
+              seed.on('close', (code) => {
+                if (code === 0) {
+                  console.log('✅ Usuario admin creado: admin@exmc.com / admin123');
+                } else {
+                  console.log('⚠️ Usuario admin ya existe o hubo error');
+                }
+                resolve();
+              });
+              seed.on('error', () => resolve());
+              setTimeout(resolve, 3000); // timeout
+            });
+          } else {
+            console.log('⚠️ Archivo seed-admin.sql no encontrado');
+          }
         } else {
           console.warn('⚠️ psql o migration.sql no encontrado, saltando inicialización BD');
         }

@@ -684,36 +684,67 @@ async function initializeApp() {
             setTimeout(resolve, 5000); // timeout
           });
           
-          // Ejecutar seed del usuario administrador
-          console.log('👤 Creando usuario administrador...');
-          const seedFile = path.join(process.resourcesPath, 'backend', 'prisma', 'seed-admin.sql');
+          // Ejecutar fix de schema (agregar campos faltantes)
+          console.log('🔧 Aplicando correcciones de schema...');
+          const fixSchemaFile = path.join(process.resourcesPath, 'backend', 'prisma', 'fix-schema.sql');
           
-          if (fs.existsSync(seedFile)) {
-            const seed = spawn(psqlPath, [
+          if (fs.existsSync(fixSchemaFile)) {
+            const fixSchema = spawn(psqlPath, [
               '-h', 'localhost',
               '-p', '5433',
               '-U', 'postgres',
               '-d', 'exmc_db',
-              '-f', seedFile
+              '-f', fixSchemaFile
             ], {
               env: { ...process.env, PGPASSWORD: 'postgres' },
               windowsHide: true
             });
             
             await new Promise((resolve) => {
-              seed.on('close', (code) => {
+              fixSchema.on('close', (code) => {
                 if (code === 0) {
-                  console.log('✅ Usuario admin creado: admin@exmc.com / admin123');
+                  console.log('✅ Schema actualizado correctamente');
                 } else {
-                  console.log('⚠️ Usuario admin ya existe o hubo error');
+                  console.log('⚠️ Schema con advertencias (posiblemente ya actualizado)');
                 }
                 resolve();
               });
-              seed.on('error', () => resolve());
-              setTimeout(resolve, 3000); // timeout
+              fixSchema.on('error', () => resolve());
+              setTimeout(resolve, 3000);
+            });
+          }
+          
+          // Ejecutar seed completo (usuarios, productos, clientes, ventas de prueba)
+          console.log('🌱 Cargando datos de prueba (tienda de ropa)...');
+          const seedCompleteFile = path.join(process.resourcesPath, 'backend', 'prisma', 'seed-complete.sql');
+          
+          if (fs.existsSync(seedCompleteFile)) {
+            const seedComplete = spawn(psqlPath, [
+              '-h', 'localhost',
+              '-p', '5433',
+              '-U', 'postgres',
+              '-d', 'exmc_db',
+              '-f', seedCompleteFile
+            ], {
+              env: { ...process.env, PGPASSWORD: 'postgres' },
+              windowsHide: true
+            });
+            
+            await new Promise((resolve) => {
+              seedComplete.on('close', (code) => {
+                if (code === 0) {
+                  console.log('✅ Datos de prueba cargados: 3 usuarios, 4 proveedores, 20 productos, 6 clientes, 5 ventas');
+                  console.log('   👤 Usuarios: admin@exmc.com, vendedor@exmc.com, consulta@exmc.com (password: admin123)');
+                } else {
+                  console.log('⚠️ Algunos datos ya existen (normal en reinicios)');
+                }
+                resolve();
+              });
+              seedComplete.on('error', () => resolve());
+              setTimeout(resolve, 5000);
             });
           } else {
-            console.log('⚠️ Archivo seed-admin.sql no encontrado');
+            console.log('⚠️ Archivo seed-complete.sql no encontrado');
           }
         } else {
           console.warn('⚠️ psql o migration.sql no encontrado, saltando inicialización BD');

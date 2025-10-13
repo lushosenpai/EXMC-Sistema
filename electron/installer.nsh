@@ -20,7 +20,7 @@
   ; Agregar archivo de créditos con toda la info de contacto
   FileOpen $0 "$INSTDIR\CREDITOS.txt" w
   FileWrite $0 "═══════════════════════════════════════════════════$\r$\n"
-  FileWrite $0 "           SISTEMA EXMC v1.0.0$\r$\n"
+  FileWrite $0 "           SISTEMA EXMC v2.0.0$\r$\n"
   FileWrite $0 "      Sistema de Gestión Comercial$\r$\n"
   FileWrite $0 "═══════════════════════════════════════════════════$\r$\n"
   FileWrite $0 "$\r$\n"
@@ -34,6 +34,10 @@
   FileWrite $0 "$\r$\n"
   FileWrite $0 "  WhatsApp: +54 2657580979$\r$\n"
   FileWrite $0 "  https://wa.me/5492657580979?text=Hola!%20Consulta%20sobre%20Sistema%20EXMC$\r$\n"
+  FileWrite $0 "$\r$\n"
+  FileWrite $0 "DEBUG / LOGS:$\r$\n"
+  FileWrite $0 "  Para ver logs: Menu Inicio > Sistema EXMC > Ver Logs (Debug)$\r$\n"
+  FileWrite $0 "  O lee: COMO-VER-LOGS.txt en la carpeta de instalacion$\r$\n"
   FileWrite $0 "$\r$\n"
   FileWrite $0 "═══════════════════════════════════════════════════$\r$\n"
   FileWrite $0 "Copyright © 2025 Luciano Savoretti$\r$\n"
@@ -57,6 +61,8 @@
   
   ; Crear accesos directos en el menú Inicio
   CreateDirectory "$SMPROGRAMS\Sistema EXMC"
+  CreateShortCut "$SMPROGRAMS\Sistema EXMC\Sistema EXMC.lnk" "$INSTDIR\Sistema EXMC.exe"
+  CreateShortCut "$SMPROGRAMS\Sistema EXMC\Ver Logs (Debug).lnk" "$INSTDIR\resources\app.asar.unpacked\electron\ver-logs.bat" "" "$INSTDIR\Sistema EXMC.exe" 0 SW_SHOWNORMAL "" "Ver logs de depuración"
   CreateShortCut "$SMPROGRAMS\Sistema EXMC\Instagram @devpuchito.lnk" "https://www.instagram.com/devpuchito/"
   CreateShortCut "$SMPROGRAMS\Sistema EXMC\WhatsApp - Contactar.lnk" "https://wa.me/5492657580979?text=Hola!%20Consulta%20sobre%20Sistema%20EXMC"
 !macroend
@@ -66,5 +72,5 @@
 
 !macro customInit
   ; Mensaje al iniciar el instalador
-  MessageBox MB_ICONINFORMATION "Sistema EXMC v1.0.0$\r$\n$\r$\nDesarrollado por:$\r$\nLuciano Savoretti$\r$\n@devpuchito$\r$\n$\r$\nSistema de Gestión Comercial"
+  MessageBox MB_ICONINFORMATION "Sistema EXMC v2.0.0$\r$\n$\r$\nDesarrollado por:$\r$\nLuciano Savoretti$\r$\n@devpuchito$\r$\n$\r$\nSistema de Gestión Comercial con Licencias"
 !macroend

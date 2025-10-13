@@ -306,14 +306,17 @@ async function startBackend() {
       JWT_SECRET: process.env.JWT_SECRET || 'exmc-secret-key-change-in-production',
     };
 
-    console.log('Iniciando backend con:', process.execPath);
+    console.log('Iniciando backend...');
 
-    // Usar process.execPath que apunta al ejecutable de Electron que incluye Node.js
-    backendProcess = spawn(process.execPath, [backendScript], {
+    // En Electron, usar fork para ejecutar scripts Node.js
+    // Esto usa el Node.js embebido de Electron sin conflictos de instancia
+    const { fork } = require('child_process');
+    
+    backendProcess = fork(backendScript, [], {
       cwd: backendPath,
       env,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+      silent: false
     });
 
     let backendReady = false;

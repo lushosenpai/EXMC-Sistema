@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+         CÓMO VER LOS LOGS DE DEBUG
+           Sistema EXMC v2.0.0
+═══════════════════════════════════════════════════
+
+Si tienes problemas con la aplicación, puedes ver los 
+logs para diagnosticar qué está fallando.
+
+═══════════════════════════════════════════════════
+📋 MÉTODO 1: Acceso Directo (MÁS FÁCIL)
+═══════════════════════════════════════════════════
+
+1. Abre el Menú Inicio
+2. Busca "Sistema EXMC"
+3. Haz clic en "Ver Logs (Debug)"
+4. Se abrirá una ventana con todos los logs
+
+═══════════════════════════════════════════════════
+💻 MÉTODO 2: PowerShell (MÁS COMPLETO)
+═══════════════════════════════════════════════════
+
+1. Abre PowerShell (Windows + X → Windows PowerShell)
+
+2. Navega al directorio de instalación:
+   
+   cd "C:\Users\TU_USUARIO\AppData\Local\Programs\sistema-exmc"
+   
+   O si instalaste para todos los usuarios:
+   
+   cd "C:\Program Files\Sistema EXMC"
+
+3. Ejecuta la aplicación:
+   
+   .\Sistema EXMC.exe
+
+4. Verás todos los logs en la consola:
+   
+   === BACKEND DEBUG ===
+   ✅ Backend script encontrado!
+   🚀 Server running on port 3001
+   
+═══════════════════════════════════════════════════
+📧 ENVIAR LOGS AL DESARROLLADOR
+═══════════════════════════════════════════════════
+
+Si encuentras errores:
+
+1. Ejecuta la app con uno de los métodos anteriores
+2. Copia TODO el texto que aparece en la consola
+3. Envíalo por WhatsApp o Instagram:
+
+   📱 WhatsApp: +54 2657580979
+   📷 Instagram: @devpuchito
+
+4. Incluye una captura de pantalla si es posible
+
+═══════════════════════════════════════════════════
+🔍 QUÉ BUSCAR EN LOS LOGS
+═══════════════════════════════════════════════════
+
+✅ SEÑALES DE ÉXITO:
+   ✅ PostgreSQL iniciado correctamente
+   ✅ Backend script encontrado!
+   ✅ Backend iniciado correctamente
+   🚀 Server running on port 3001
+   ✅ Página cargada correctamente
+
+❌ SEÑALES DE ERROR:
+   ❌ PostgreSQL fallo al iniciar
+   ❌ Backend script NO encontrado
+   ❌ Error al cargar URL
+   ❌ ERR_CONNECTION_REFUSED
+
+═══════════════════════════════════════════════════
+
+Desarrollado por: Luciano Savoretti
+Instagram: @devpuchito
+WhatsApp: +54 2657580979
+
+═══════════════════════════════════════════════════

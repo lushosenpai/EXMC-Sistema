@@ -567,6 +567,49 @@ function createTray() {
   });
 }
 
+// Ejecutar migraciones de Prisma
+async function runPrismaMigrations() {
+  return new Promise((resolve, reject) => {
+    const { execSync } = require('child_process');
+    
+    // Determinar rutas según el modo
+    let backendPath;
+    let prismaPath;
+    
+    if (isDev) {
+      backendPath = path.join(__dirname, '..', 'backend');
+      prismaPath = path.join(backendPath, 'node_modules', '.bin', 'prisma');
+    } else {
+      backendPath = path.join(process.resourcesPath, 'backend');
+      prismaPath = path.join(backendPath, 'node_modules', '.bin', 'prisma');
+    }
+    
+    console.log('Ejecutando migraciones desde:', backendPath);
+    console.log('Prisma CLI:', prismaPath);
+    
+    try {
+      // Ejecutar prisma migrate deploy (aplica migraciones sin generar nuevas)
+      const result = execSync(`"${prismaPath}" migrate deploy`, {
+        cwd: backendPath,
+        env: {
+          ...process.env,
+          DATABASE_URL: `file:${DATABASE_PATH}`,
+        },
+        encoding: 'utf8',
+        stdio: 'pipe'
+      });
+      
+      console.log('Resultado de migraciones:', result);
+      resolve();
+    } catch (error) {
+      console.error('Error ejecutando migraciones:', error.message);
+      if (error.stdout) console.log('stdout:', error.stdout);
+      if (error.stderr) console.error('stderr:', error.stderr);
+      reject(error);
+    }
+  });
+}
+
 // Función para inicializar la aplicación principal
 async function initializeApp() {
   // Evitar inicializaciones múltiples
@@ -585,10 +628,25 @@ async function initializeApp() {
     
     if (!isDev) {
       // 1. Configurar ruta de base de datos SQLite
-      console.log('� Base de datos SQLite:', DATABASE_PATH);
+      console.log('📁 Base de datos SQLite:', DATABASE_PATH);
       process.env.DATABASE_URL = `file:${DATABASE_PATH}`;
       
-      // 2. Iniciar servidor backend (Prisma migrará automáticamente)
+      // 2. Ejecutar migraciones de Prisma para crear tablas
+      console.log('📦 Ejecutando migraciones de base de datos...');
+      try {
+        await runPrismaMigrations();
+        console.log('✅ Migraciones aplicadas correctamente');
+      } catch (err) {
+        console.error('❌ Error al ejecutar migraciones:', err.message);
+        // Mostrar error al usuario
+        dialog.showErrorBox(
+          'Error de Base de Datos',
+          `No se pudo inicializar la base de datos:\n\n${err.message}\n\nPor favor reinstale la aplicación.`
+        );
+        throw err;
+      }
+      
+      // 3. Iniciar servidor backend
       console.log('🚀 Iniciando backend...');
       try {
         await startBackend();

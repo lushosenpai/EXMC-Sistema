@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/api/auth';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { FiLock, FiMail, FiEye, FiEyeOff } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import logoSVG from '../assets/EXMC.svg';

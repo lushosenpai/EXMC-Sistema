@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { Toaster } from 'sonner';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -26,8 +27,16 @@ function App() {
   const { isAuthenticated } = useAuthStore();
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <>
+      <Toaster 
+        position="top-right"
+        expand={true}
+        richColors
+        closeButton
+        duration={4000}
+      />
+      <BrowserRouter>
+        <Routes>
         {/* Rutas públicas */}
         <Route element={<AuthLayout />}>
           <Route
@@ -73,6 +82,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </>
   );
 }
 

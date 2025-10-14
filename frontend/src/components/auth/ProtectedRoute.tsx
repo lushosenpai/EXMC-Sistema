@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 
 interface ProtectedRouteProps {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { FiShoppingCart, FiPlus, FiMinus, FiTrash2, FiSearch, FiDollarSign } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import apiClient from '../api/client';
 import { Customer } from '../api';
 

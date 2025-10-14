@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiPlus, FiPackage, FiTrendingUp, FiTrendingDown, FiAlertCircle, FiFilter } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { stockApi, StockMovement, LowStockProduct } from '../api/stock';
 import { productApi, Product } from '../api';
 import Modal from '../components/common/Modal';

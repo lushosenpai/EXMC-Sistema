@@ -38,7 +38,8 @@ licenseManager = new LicenseManager();
 // PREVENIR MÚLTIPLES INSTANCIAS
 // ============================================
 
-const gotTheLock = app.requestSingleInstanceLock();
+// TEMPORALMENTE DESHABILITADO EN DESARROLLO
+const gotTheLock = isDev ? true : app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   console.log('Ya hay una instancia ejecutándose. Cerrando...');
@@ -373,6 +374,11 @@ function createWindow() {
   // Remover menú por defecto
   mainWindow.setMenuBarVisibility(false);
 
+  // Abrir DevTools en desarrollo
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
+
   // Cargar la aplicación
   let startUrl = isDev
     ? `http://localhost:${FRONTEND_PORT}`
@@ -567,46 +573,24 @@ function createTray() {
   });
 }
 
-// Ejecutar migraciones de Prisma
-async function runPrismaMigrations() {
+// Inicializar base de datos SQLite
+async function initializeDatabase() {
   return new Promise((resolve, reject) => {
-    const { execSync } = require('child_process');
+    console.log('📦 Inicializando base de datos SQLite...');
+    console.log('📁 Ruta de base de datos:', DATABASE_PATH);
     
-    // Determinar rutas según el modo
-    let backendPath;
-    let prismaPath;
-    
-    if (isDev) {
-      backendPath = path.join(__dirname, '..', 'backend');
-      prismaPath = path.join(backendPath, 'node_modules', '.bin', 'prisma');
-    } else {
-      backendPath = path.join(process.resourcesPath, 'backend');
-      prismaPath = path.join(backendPath, 'node_modules', '.bin', 'prisma');
+    // Con SQLite, Prisma Client maneja todo automáticamente
+    // Solo necesitamos asegurarnos de que la carpeta existe
+    const dbDir = path.dirname(DATABASE_PATH);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+      console.log('✅ Carpeta de datos creada:', dbDir);
     }
     
-    console.log('Ejecutando migraciones desde:', backendPath);
-    console.log('Prisma CLI:', prismaPath);
-    
-    try {
-      // Ejecutar prisma migrate deploy (aplica migraciones sin generar nuevas)
-      const result = execSync(`"${prismaPath}" migrate deploy`, {
-        cwd: backendPath,
-        env: {
-          ...process.env,
-          DATABASE_URL: `file:${DATABASE_PATH}`,
-        },
-        encoding: 'utf8',
-        stdio: 'pipe'
-      });
-      
-      console.log('Resultado de migraciones:', result);
-      resolve();
-    } catch (error) {
-      console.error('Error ejecutando migraciones:', error.message);
-      if (error.stdout) console.log('stdout:', error.stdout);
-      if (error.stderr) console.error('stderr:', error.stderr);
-      reject(error);
-    }
+    // La base de datos se creará automáticamente cuando el backend use Prisma Client
+    // No necesitamos ejecutar migraciones manualmente
+    console.log('✅ Base de datos lista');
+    resolve();
   });
 }
 
@@ -631,13 +615,13 @@ async function initializeApp() {
       console.log('📁 Base de datos SQLite:', DATABASE_PATH);
       process.env.DATABASE_URL = `file:${DATABASE_PATH}`;
       
-      // 2. Ejecutar migraciones de Prisma para crear tablas
-      console.log('📦 Ejecutando migraciones de base de datos...');
+      // 2. Inicializar base de datos (crear carpeta si no existe)
+      console.log('📦 Inicializando base de datos...');
       try {
-        await runPrismaMigrations();
-        console.log('✅ Migraciones aplicadas correctamente');
+        await initializeDatabase();
+        console.log('✅ Base de datos inicializada correctamente');
       } catch (err) {
-        console.error('❌ Error al ejecutar migraciones:', err.message);
+        console.error('❌ Error al inicializar base de datos:', err.message);
         // Mostrar error al usuario
         dialog.showErrorBox(
           'Error de Base de Datos',
@@ -793,19 +777,6 @@ app.on('before-quit', async (event) => {
     if (backendProcess) {
       console.log('Cerrando servidor backend...');
       backendProcess.kill();
-    }
-
-    // Cerrar PostgreSQL si está corriendo
-    if (postgresProcess) {
-      console.log('Cerrando PostgreSQL...');
-      const pgBin = path.join(POSTGRES_PATH, 'bin', 'pg_ctl.exe');
-      const pgData = path.join(DATA_PATH, 'pgdata');
-      
-      if (fs.existsSync(pgBin)) {
-        spawn(pgBin, ['stop', '-D', pgData, '-m', 'fast'], {
-          windowsHide: true
-        });
-      }
     }
   } catch (error) {
     console.error('Error al cerrar procesos:', error);

@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { FiArrowLeft, FiUser, FiCalendar, FiDollarSign, FiPackage, FiCreditCard, FiDownload } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { saleApi } from '../api/sales';
 
 interface SaleItem {

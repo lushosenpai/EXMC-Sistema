@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiUser, FiSave, FiDollarSign } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { customerApi, Customer } from '../api';
 import Modal from '../components/common/Modal';
 import CustomerAccountModal from '../components/customers/CustomerAccountModal';
@@ -76,42 +76,9 @@ const CustomersPageFull = () => {
   });
 
   const handleDelete = async (id: string, name: string) => {
-    toast.promise(
-      new Promise((resolve, reject) => {
-        toast((t) => (
-          <div className="flex flex-col gap-2">
-            <p className="font-semibold">¿Eliminar cliente?</p>
-            <p className="text-sm text-gray-600">¿Estás seguro de eliminar "{name}"?</p>
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  deleteMutation.mutate(id);
-                  resolve(true);
-                }}
-                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-              >
-                Eliminar
-              </button>
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  reject();
-                }}
-                className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 text-sm"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        ), { duration: 10000 });
-      }),
-      {
-        loading: '',
-        success: '',
-        error: '',
-      }
-    );
+    if (window.confirm(`¿Estás seguro de eliminar el cliente "${name}"?`)) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const openCreateModal = () => {

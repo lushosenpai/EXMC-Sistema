@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import { PrismaClient } from '@prisma/client';
+import { execSync } from 'child_process';
+import fs from 'fs';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -18,6 +21,47 @@ import stockRoutes from './routes/stock.routes';
 
 dotenv.config();
 
+// Función para inicializar la base de datos
+async function initializeDatabase() {
+  console.log('📦 Inicializando base de datos SQLite...');
+  
+  const prisma = new PrismaClient();
+  
+  try {
+    // Intentar verificar si la tabla users existe
+    await prisma.user.findFirst();
+    console.log('✅ Base de datos ya inicializada correctamente');
+    await prisma.$disconnect();
+  } catch (error: any) {
+    console.log('⚠️ Base de datos sin inicializar, creando tablas...');
+    
+    // Cerrar conexión antes de ejecutar db push
+    await prisma.$disconnect();
+    
+    try {
+      // Ejecutar prisma db push para crear las tablas
+      const backendPath = path.join(__dirname, '..');
+      const schemaPath = path.join(backendPath, 'prisma', 'schema.prisma');
+      
+      if (fs.existsSync(schemaPath)) {
+        console.log('📄 Schema encontrado, ejecutando db push...');
+        execSync('npx prisma db push --accept-data-loss --skip-generate', {
+          cwd: backendPath,
+          stdio: 'inherit',
+          env: { ...process.env }
+        });
+        console.log('✅ Tablas creadas exitosamente');
+      } else {
+        console.error('❌ No se encontró schema.prisma en:', schemaPath);
+        throw new Error('Schema de Prisma no encontrado');
+      }
+    } catch (pushError: any) {
+      console.error('❌ Error al crear tablas:', pushError.message);
+      throw pushError;
+    }
+  }
+}
+
 const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
@@ -30,11 +74,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
+// Rate limiting - Más permisivo en desarrollo
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // límite de 100 peticiones por ventana
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 en desarrollo, 100 en producción
   message: 'Demasiadas peticiones desde esta IP, por favor intente más tarde.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
 app.use('/api', limiter);
@@ -115,10 +161,43 @@ if (process.env.NODE_ENV === 'production') {
         }
       });
     });
+    
+    // 404 para rutas no encontradas cuando no hay frontend
+    app.use((_req: Request, res: Response) => {
+      res.status(404).json({
+        success: false,
+        message: 'Endpoint not found',
+      });
+    });
   }
+} else {
+  // En desarrollo, solo responder en raíz
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({
+      success: true,
+      message: 'Sistema EXMC Backend API - Development Mode',
+      version: '2.0.0',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth/*',
+        users: '/api/users/*',
+        products: '/api/products/*',
+        sales: '/api/sales/*',
+        dashboard: '/api/dashboard/*'
+      }
+    });
+  });
+  
+  // 404 handler para desarrollo
+  app.use((_req: Request, res: Response) => {
+    res.status(404).json({
+      success: false,
+      message: 'Endpoint not found',
+    });
+  });
 }
 
-// Error handling middleware
+// Error handling middleware (debe estar después de todas las rutas)
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
   
@@ -132,19 +211,24 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// 404 handler
-app.use((_req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint not found',
-  });
-});
-
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 API URL: http://localhost:${PORT}/api`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+async function startServer() {
+  try {
+    // Inicializar base de datos antes de iniciar el servidor
+    await initializeDatabase();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📡 API URL: http://localhost:${PORT}/api`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    console.error('❌ Error al iniciar servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Iniciar el servidor
+startServer();
 
 export default app;

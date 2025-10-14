@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiSave, FiSettings, FiDollarSign, FiFileText, FiImage } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { configApi, SystemConfig } from '../api/config';
 
 const ConfigurationPage = () => {

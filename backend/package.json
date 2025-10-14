@@ -19,10 +19,12 @@
     "express",
     "typescript",
     "prisma",
-    "postgresql",
+    "sqlite",
     "punto-de-venta",
     "gestion-comercial",
-    "facturacion"
+    "facturacion",
+    "electron",
+    "desktop-app"
   ],
   "author": {
     "name": "Luciano Savoretti",

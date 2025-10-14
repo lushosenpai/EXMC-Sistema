@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { FiUser, FiLogOut, FiBell, FiSettings, FiChevronDown, FiX } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 const Navbar = () => {
   const navigate = useNavigate();

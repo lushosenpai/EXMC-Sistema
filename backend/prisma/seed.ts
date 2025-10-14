@@ -1,4 +1,4 @@
-import { PrismaClient, Role, AccountType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -28,7 +28,7 @@ async function main() {
       email: 'admin@exmc.com',
       password: hashedPassword,
       name: 'Administrador',
-      role: Role.ADMIN,
+      role: 'ADMIN',
     },
   });
 
@@ -37,7 +37,7 @@ async function main() {
       email: 'vendedor@exmc.com',
       password: hashedPasswordVendedor,
       name: 'Juan Vendedor',
-      role: Role.VENDEDOR,
+      role: 'VENDEDOR',
     },
   });
 
@@ -46,7 +46,7 @@ async function main() {
       email: 'consulta@exmc.com',
       password: hashedPasswordConsulta,
       name: 'María Consulta',
-      role: Role.CONSULTA,
+      role: 'CONSULTA',
     },
   });
 
@@ -263,7 +263,7 @@ async function main() {
       email: 'ana.garcia@email.com',
       address: 'Calle San Martín 456',
       cuitDni: '27345678901',
-      accountType: AccountType.EFECTIVO,
+      accountType: 'EFECTIVO',
     },
     {
       name: 'Carlos Rodríguez',
@@ -271,7 +271,7 @@ async function main() {
       email: 'carlos.rodriguez@email.com',
       address: 'Av. Pellegrini 1234',
       cuitDni: '20234567890',
-      accountType: AccountType.CUENTA_CORRIENTE,
+      accountType: 'CUENTA_CORRIENTE',
       creditLimit: 50000,
       currentBalance: 0,
     },
@@ -281,7 +281,7 @@ async function main() {
       email: 'maria.fernandez@email.com',
       address: 'Bv. Rondeau 789',
       cuitDni: '27456789012',
-      accountType: AccountType.EFECTIVO,
+      accountType: 'EFECTIVO',
     },
     {
       name: 'Peluquería Estilo & Moda',
@@ -289,7 +289,7 @@ async function main() {
       email: 'estilomoda@peluqueria.com',
       address: 'Calle Córdoba 2345',
       cuitDni: '30712345678',
-      accountType: AccountType.CUENTA_CORRIENTE,
+      accountType: 'CUENTA_CORRIENTE',
       creditLimit: 100000,
       currentBalance: 0,
       observations: 'Cliente mayorista - Descuento del 10%',
@@ -300,7 +300,7 @@ async function main() {
       email: 'laura.martinez@email.com',
       address: 'Calle Entre Ríos 567',
       cuitDni: '27567890123',
-      accountType: AccountType.EFECTIVO,
+      accountType: 'EFECTIVO',
     },
   ];
 

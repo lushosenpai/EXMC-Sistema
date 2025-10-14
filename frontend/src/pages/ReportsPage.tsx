@@ -16,7 +16,7 @@ import {
   Legend,
 } from 'chart.js';
 import { dashboardApi } from '../api/dashboard';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 // Registrar componentes de Chart.js
 ChartJS.register(

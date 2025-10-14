@@ -15,14 +15,12 @@ module.exports = {
   ports: {
     backend: 3001,
     frontend: 5173,
-    postgres: 5433,
   },
 
-  // Base de datos
+  // Base de datos SQLite
   database: {
-    name: 'exmc_db',
-    user: 'postgres',
-    password: 'postgres',
+    type: 'sqlite',
+    filename: 'exmc.db',
   },
 
   // Configuración de ventana

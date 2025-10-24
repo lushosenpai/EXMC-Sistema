@@ -21,7 +21,7 @@ import stockRoutes from './routes/stock.routes';
 dotenv.config();
 
 // Función SIMPLE y ROBUSTA para inicializar la base de datos
-// SIN dependencias nativas, solo Prisma
+// Copia una BD template preconfigurada
 async function initializeDatabase() {
   console.log('📦 Inicializando base de datos SQLite...');
   
@@ -44,68 +44,42 @@ async function initializeDatabase() {
     console.log('✅ Carpeta de datos creada:', dbDir);
   }
   
+  // Si el archivo de BD no existe, copiar el template
+  const dbExists = fs.existsSync(dbPath);
+  
+  if (!dbExists) {
+    console.log('🔨 Base de datos no existe, copiando template...');
+    
+    const templatePath = path.join(__dirname, '..', 'prisma', 'template.db');
+    
+    if (fs.existsSync(templatePath)) {
+      try {
+        fs.copyFileSync(templatePath, dbPath);
+        console.log('✅ Base de datos template copiada exitosamente');
+        console.log('   � Usuario: admin@exmc.com');
+        console.log('   🔑 Password: admin123');
+      } catch (error: any) {
+        console.error('❌ Error copiando template:', error.message);
+        throw error;
+      }
+    } else {
+      console.error('❌ Template de base de datos no encontrado en:', templatePath);
+      throw new Error('Template de base de datos no encontrado. Por favor reinstale la aplicación.');
+    }
+  }
+  
+  // Verificar que la base de datos funciona correctamente
   const prisma = new PrismaClient();
   
   try {
-    // Verificar si la base de datos ya existe y está inicializada
     console.log('🔍 Verificando base de datos...');
     const userCount = await prisma.user.count();
     console.log(`✅ Base de datos OK - ${userCount} usuario(s) encontrado(s)`);
     await prisma.$disconnect();
-    return;
   } catch (error: any) {
-    console.log('⚠️ Base de datos necesita inicialización');
-    
-    try {
-      // La base de datos no existe o no tiene tablas
-      // Prisma Client creará las tablas automáticamente en la primera conexión
-      console.log('🔨 Creando usuario administrador...');
-      
-      // Hash de la contraseña "admin123"
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      
-      // Crear usuario admin
-      await prisma.user.create({
-        data: {
-          email: 'admin@exmc.com',
-          password: hashedPassword,
-          name: 'Administrador',
-          role: 'ADMIN',
-          isActive: true
-        }
-      });
-      
-      console.log('✅ Usuario administrador creado exitosamente');
-      console.log('   📧 Email: admin@exmc.com');
-      console.log('   🔑 Password: admin123');
-      
-      // Crear configuraciones por defecto
-      const configs = [
-        { key: 'business_name', value: 'Mi Negocio' },
-        { key: 'business_address', value: '' },
-        { key: 'business_phone', value: '' },
-        { key: 'business_email', value: '' },
-        { key: 'tax_percentage', value: '21' }
-      ];
-      
-      for (const config of configs) {
-        await prisma.config.create({
-          data: config
-        });
-      }
-      
-      console.log('✅ Configuraciones iniciales creadas');
-      
-      // Verificar que todo se creó correctamente
-      const finalCount = await prisma.user.count();
-      console.log(`✅ Verificación final: ${finalCount} usuario(s) en la base de datos`);
-      
-      await prisma.$disconnect();
-    } catch (createError: any) {
-      console.error('❌ Error al crear datos iniciales:', createError.message);
-      await prisma.$disconnect();
-      throw createError;
-    }
+    console.error('❌ Error verificando base de datos:', error.message);
+    await prisma.$disconnect();
+    throw error;
   }
 }
 
@@ -151,7 +125,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ 
     status: 'ok', 
     message: 'Server is running',
-    version: '2.0.0',
+    version: '2.0.3',
     system: 'Sistema EXMC - Gestión Comercial',
     author: {
       name: 'Luciano Savoretti',
@@ -193,7 +167,7 @@ if (process.env.NODE_ENV === 'production') {
       res.json({
         success: true,
         message: 'Sistema EXMC Backend API',
-        version: '2.0.0',
+        version: '2.0.3',
       });
     });
   }
@@ -202,7 +176,7 @@ if (process.env.NODE_ENV === 'production') {
     res.json({
       success: true,
       message: 'Sistema EXMC Backend API - Development Mode',
-      version: '2.0.0',
+      version: '2.0.3',
     });
   });
 }

@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
-import { execSync } from 'child_process';
 import fs from 'fs';
 
 // Routes
@@ -39,21 +38,45 @@ async function initializeDatabase() {
     await prisma.$disconnect();
     
     try {
-      // Ejecutar prisma db push para crear las tablas
+      // Ejecutar script SQL directamente para crear las tablas
       const backendPath = path.join(__dirname, '..');
-      const schemaPath = path.join(backendPath, 'prisma', 'schema.prisma');
+      const sqlScriptPath = path.join(backendPath, 'prisma', 'init-database.sql');
       
-      if (fs.existsSync(schemaPath)) {
-        console.log('📄 Schema encontrado, ejecutando db push...');
-        execSync('npx prisma db push --accept-data-loss --skip-generate', {
-          cwd: backendPath,
-          stdio: 'inherit',
-          env: { ...process.env }
-        });
+      if (!fs.existsSync(sqlScriptPath)) {
+        console.error('❌ No se encontró script de inicialización:', sqlScriptPath);
+        throw new Error('Script de inicialización SQL no encontrado');
+      }
+      
+      console.log('📄 Script SQL encontrado, creando base de datos...');
+      
+      // Leer el script SQL
+      const sqlScript = fs.readFileSync(sqlScriptPath, 'utf8');
+      
+      // Crear nueva instancia de Prisma para ejecutar el script
+      const prismaInit = new PrismaClient();
+      
+      try {
+        // Dividir el script en comandos individuales (separados por punto y coma)
+        const commands = sqlScript
+          .split(';')
+          .map(cmd => cmd.trim())
+          .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
+        
+        console.log(`Ejecutando ${commands.length} comandos SQL...`);
+        
+        // Ejecutar cada comando
+        for (const command of commands) {
+          if (command.trim()) {
+            await prismaInit.$executeRawUnsafe(command);
+          }
+        }
+        
         console.log('✅ Tablas creadas exitosamente');
-      } else {
-        console.error('❌ No se encontró schema.prisma en:', schemaPath);
-        throw new Error('Schema de Prisma no encontrado');
+        await prismaInit.$disconnect();
+      } catch (sqlError: any) {
+        console.error('❌ Error al ejecutar script SQL:', sqlError.message);
+        await prismaInit.$disconnect();
+        throw sqlError;
       }
     } catch (pushError: any) {
       console.error('❌ Error al crear tablas:', pushError.message);

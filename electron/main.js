@@ -305,20 +305,28 @@ async function startBackend() {
       const message = data.toString();
       console.error(`Backend stderr: ${message}`);
       
-      // Si es un error crítico, mostrar diálogo
+      // Si es un error crítico de Prisma o base de datos, mostrar diálogo específico
       if (message.includes('Error:') || message.includes('Cannot find module')) {
-        dialog.showErrorBox(
-          'Error del Servidor Backend',
-          `No se pudo iniciar el servidor backend:\n\n${message.substring(0, 200)}\n\nPor favor reinstale la aplicación.`
-        );
+        // No mostrar inmediatamente, esperar a ver si el proceso se recupera
+        setTimeout(() => {
+          if (!backendReady) {
+            dialog.showErrorBox(
+              'Error del Servidor Backend',
+              `No se pudo iniciar el servidor backend:\n\n${message.substring(0, 300)}\n\nPor favor reinstale la aplicación.`
+            );
+          }
+        }, 2000);
       }
     });
 
     backendProcess.on('error', (err) => {
       console.error('Backend process error:', err);
+      
+      const errorMsg = `No se pudo iniciar el servidor backend:\n\n${err.message}\n\nVerifique que:\n- Tenga permisos suficientes\n- No haya otro proceso usando el puerto ${BACKEND_PORT}\n- La instalación esté completa`;
+      
       dialog.showErrorBox(
-        'Error del Servidor',
-        `No se pudo iniciar el servidor backend:\n${err.message}\n\nPor favor reinicie la aplicación.`
+        'Error del Servidor Backend',
+        errorMsg
       );
       reject(err);
     });
@@ -326,9 +334,11 @@ async function startBackend() {
     backendProcess.on('close', (code) => {
       console.log(`Backend process exited with code ${code}`);
       if (code !== 0 && code !== null && !backendReady) {
+        const errorMsg = `El servidor backend se cerró inesperadamente (código: ${code}).\n\nEsto puede deberse a:\n- Error en la base de datos\n- Falta de permisos\n- Puerto ${BACKEND_PORT} ocupado\n- Instalación incompleta\n\nRevise los logs para más detalles.`;
+        
         dialog.showErrorBox(
           'Error del Backend',
-          `El servidor backend se cerró inesperadamente (código: ${code})`
+          errorMsg
         );
       }
     });

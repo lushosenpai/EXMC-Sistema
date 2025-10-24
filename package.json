@@ -56,7 +56,8 @@
           "node_modules/**/*",
           "package.json",
           "prisma/**/*",
-          "!node_modules/.cache/**/*"
+          "!node_modules/.cache/**/*",
+          "!prisma/migrations/**/*"
         ]
       },
       {

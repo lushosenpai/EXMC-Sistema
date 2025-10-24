@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
+import Database from 'better-sqlite3';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -20,68 +21,96 @@ import stockRoutes from './routes/stock.routes';
 
 dotenv.config();
 
-// Función para inicializar la base de datos
+// Función para inicializar la base de datos con better-sqlite3
 async function initializeDatabase() {
   console.log('📦 Inicializando base de datos SQLite...');
   
-  const prisma = new PrismaClient();
+  const databaseUrl = process.env.DATABASE_URL || '';
+  let dbPath = '';
+  
+  // Extraer ruta del archivo de la URL
+  if (databaseUrl.startsWith('file:')) {
+    dbPath = databaseUrl.replace('file:', '');
+  } else {
+    dbPath = path.join(__dirname, '..', 'prisma', 'dev.db');
+  }
+  
+  console.log('📁 Ruta de base de datos:', dbPath);
+  
+  // Asegurar que el directorio existe
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log('✅ Carpeta de datos creada:', dbDir);
+  }
   
   try {
-    // Intentar verificar si la tabla users existe
-    await prisma.user.findFirst();
-    console.log('✅ Base de datos ya inicializada correctamente');
-    await prisma.$disconnect();
-  } catch (error: any) {
-    console.log('⚠️ Base de datos sin inicializar, creando tablas...');
+    // Primero verificar si la base de datos ya existe y tiene datos
+    if (fs.existsSync(dbPath)) {
+      console.log('📂 Base de datos encontrada, verificando estructura...');
+      
+      const prisma = new PrismaClient();
+      try {
+        // Verificar si las tablas existen intentando una consulta
+        await prisma.user.findFirst();
+        console.log('✅ Base de datos ya inicializada correctamente');
+        await prisma.$disconnect();
+        return;
+      } catch (error: any) {
+        console.log('⚠️ Base de datos existe pero necesita inicialización');
+        await prisma.$disconnect();
+      }
+    }
     
-    // Cerrar conexión antes de ejecutar db push
-    await prisma.$disconnect();
+    // Si llegamos aquí, necesitamos crear/inicializar la base de datos
+    console.log('🔨 Creando estructura de base de datos...');
+    
+    // Buscar el script SQL
+    const sqlScriptPath = path.join(__dirname, '..', 'prisma', 'init-database.sql');
+    
+    if (!fs.existsSync(sqlScriptPath)) {
+      console.error('❌ No se encontró script de inicialización:', sqlScriptPath);
+      throw new Error('Script de inicialización SQL no encontrado');
+    }
+    
+    console.log('📄 Script SQL encontrado, ejecutando...');
+    
+    // Leer el script SQL
+    const sqlScript = fs.readFileSync(sqlScriptPath, 'utf8');
+    
+    // Usar better-sqlite3 para ejecutar el script completo
+    const db = new Database(dbPath);
     
     try {
-      // Ejecutar script SQL directamente para crear las tablas
-      const backendPath = path.join(__dirname, '..');
-      const sqlScriptPath = path.join(backendPath, 'prisma', 'init-database.sql');
+      // Habilitar foreign keys
+      db.pragma('foreign_keys = ON');
       
-      if (!fs.existsSync(sqlScriptPath)) {
-        console.error('❌ No se encontró script de inicialización:', sqlScriptPath);
-        throw new Error('Script de inicialización SQL no encontrado');
-      }
+      // Ejecutar el script completo
+      db.exec(sqlScript);
       
-      console.log('📄 Script SQL encontrado, creando base de datos...');
+      console.log('✅ Base de datos creada exitosamente');
+      console.log('✅ Tablas creadas correctamente');
+      console.log('✅ Usuario admin creado (admin@exmc.com / admin123)');
       
-      // Leer el script SQL
-      const sqlScript = fs.readFileSync(sqlScriptPath, 'utf8');
-      
-      // Crear nueva instancia de Prisma para ejecutar el script
-      const prismaInit = new PrismaClient();
-      
-      try {
-        // Dividir el script en comandos individuales (separados por punto y coma)
-        const commands = sqlScript
-          .split(';')
-          .map(cmd => cmd.trim())
-          .filter(cmd => cmd.length > 0 && !cmd.startsWith('--'));
-        
-        console.log(`Ejecutando ${commands.length} comandos SQL...`);
-        
-        // Ejecutar cada comando
-        for (const command of commands) {
-          if (command.trim()) {
-            await prismaInit.$executeRawUnsafe(command);
-          }
-        }
-        
-        console.log('✅ Tablas creadas exitosamente');
-        await prismaInit.$disconnect();
-      } catch (sqlError: any) {
-        console.error('❌ Error al ejecutar script SQL:', sqlError.message);
-        await prismaInit.$disconnect();
-        throw sqlError;
-      }
-    } catch (pushError: any) {
-      console.error('❌ Error al crear tablas:', pushError.message);
-      throw pushError;
+      db.close();
+    } catch (dbError: any) {
+      console.error('❌ Error al ejecutar script SQL:', dbError.message);
+      db.close();
+      throw dbError;
     }
+    
+    // Verificar que el archivo de base de datos existe
+    if (fs.existsSync(dbPath)) {
+      const stats = fs.statSync(dbPath);
+      console.log(`✅ Base de datos creada: ${dbPath} (${stats.size} bytes)`);
+    } else {
+      throw new Error('La base de datos no se creó correctamente');
+    }
+    
+  } catch (error: any) {
+    console.error('❌ Error crítico al inicializar base de datos:', error.message);
+    console.error('Stack trace:', error.stack);
+    throw error;
   }
 }
 

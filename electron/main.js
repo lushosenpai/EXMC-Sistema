@@ -210,6 +210,45 @@ ipcMain.on('minimize-app', () => {
 // FUNCIONES DEL BACKEND
 // ============================================
 
+// Función para verificar si el backend está listo mediante HTTP health check
+async function checkBackendHealth(maxRetries = 30, delayMs = 1000) {
+  const http = require('http');
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await new Promise((resolve, reject) => {
+        const req = http.get(`http://localhost:${BACKEND_PORT}/api/health`, (res) => {
+          if (res.statusCode === 200) {
+            console.log(`✅ Backend health check OK (intento ${i + 1}/${maxRetries})`);
+            resolve(true);
+          } else {
+            reject(new Error(`Health check failed with status ${res.statusCode}`));
+          }
+        });
+        
+        req.on('error', (err) => {
+          reject(err);
+        });
+        
+        req.setTimeout(2000, () => {
+          req.destroy();
+          reject(new Error('Health check timeout'));
+        });
+      });
+      
+      // Si llegamos aquí, el health check fue exitoso
+      return true;
+    } catch (err) {
+      console.log(`⏳ Esperando backend... (intento ${i + 1}/${maxRetries})`);
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  return false;
+}
+
 // Iniciar servidor backend
 async function startBackend() {
   return new Promise((resolve, reject) => {
@@ -343,14 +382,30 @@ async function startBackend() {
       }
     });
 
-    // Timeout de seguridad - resolver después de 3 segundos si no hay respuesta
-    setTimeout(() => {
-      if (!backendReady) {
-        console.log('⚠️ Backend timeout reached (3s), continuing anyway...');
-        console.log('   El backend puede estar iniciando en segundo plano');
-        resolve(); // Siempre resolver para que la app continúe
+    // Función asíncrona para health checks
+    (async () => {
+      console.log('🔍 Verificando disponibilidad del backend mediante health checks...');
+      const isHealthy = await checkBackendHealth(30, 1000);
+      
+      if (isHealthy) {
+        console.log('✅ Backend está listo y respondiendo correctamente');
+        backendReady = true;
+        resolve();
+      } else {
+        console.error('❌ Backend no respondió a health checks después de 30 segundos');
+        
+        if (!backendReady) {
+          const errorMsg = `El servidor backend no pudo iniciarse correctamente.\n\nPosibles causas:\n- Error en la base de datos SQLite\n- Puerto ${BACKEND_PORT} bloqueado por firewall\n- Falta de permisos de escritura\n- Antivirus bloqueando la ejecución\n\nIntente:\n1. Ejecutar como Administrador\n2. Desactivar temporalmente el antivirus\n3. Verificar que el puerto ${BACKEND_PORT} esté libre\n4. Reinstalar la aplicación`;
+          
+          dialog.showErrorBox(
+            'Error del Servidor Backend',
+            errorMsg
+          );
+        }
+        
+        reject(new Error('Backend health check failed'));
       }
-    }, 3000); // Reducido a 3 segundos
+    })();
   });
 }
 

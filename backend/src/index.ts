@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
-import Database from 'better-sqlite3';
+import bcrypt from 'bcrypt';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -16,12 +16,12 @@ import customerRoutes from './routes/customer.routes';
 import saleRoutes from './routes/sale.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import configRoutes from './routes/config.routes';
-// import customerPaymentRoutes from './routes/customerPayment.routes'; // TODO: Descomentar cuando Prisma Client incluya CustomerPayment
 import stockRoutes from './routes/stock.routes';
 
 dotenv.config();
 
-// Función para inicializar la base de datos con better-sqlite3
+// Función SIMPLE y ROBUSTA para inicializar la base de datos
+// SIN dependencias nativas, solo Prisma
 async function initializeDatabase() {
   console.log('📦 Inicializando base de datos SQLite...');
   
@@ -44,73 +44,68 @@ async function initializeDatabase() {
     console.log('✅ Carpeta de datos creada:', dbDir);
   }
   
+  const prisma = new PrismaClient();
+  
   try {
-    // Primero verificar si la base de datos ya existe y tiene datos
-    if (fs.existsSync(dbPath)) {
-      console.log('📂 Base de datos encontrada, verificando estructura...');
-      
-      const prisma = new PrismaClient();
-      try {
-        // Verificar si las tablas existen intentando una consulta
-        await prisma.user.findFirst();
-        console.log('✅ Base de datos ya inicializada correctamente');
-        await prisma.$disconnect();
-        return;
-      } catch (error: any) {
-        console.log('⚠️ Base de datos existe pero necesita inicialización');
-        await prisma.$disconnect();
-      }
-    }
-    
-    // Si llegamos aquí, necesitamos crear/inicializar la base de datos
-    console.log('🔨 Creando estructura de base de datos...');
-    
-    // Buscar el script SQL
-    const sqlScriptPath = path.join(__dirname, '..', 'prisma', 'init-database.sql');
-    
-    if (!fs.existsSync(sqlScriptPath)) {
-      console.error('❌ No se encontró script de inicialización:', sqlScriptPath);
-      throw new Error('Script de inicialización SQL no encontrado');
-    }
-    
-    console.log('📄 Script SQL encontrado, ejecutando...');
-    
-    // Leer el script SQL
-    const sqlScript = fs.readFileSync(sqlScriptPath, 'utf8');
-    
-    // Usar better-sqlite3 para ejecutar el script completo
-    const db = new Database(dbPath);
+    // Verificar si la base de datos ya existe y está inicializada
+    console.log('🔍 Verificando base de datos...');
+    const userCount = await prisma.user.count();
+    console.log(`✅ Base de datos OK - ${userCount} usuario(s) encontrado(s)`);
+    await prisma.$disconnect();
+    return;
+  } catch (error: any) {
+    console.log('⚠️ Base de datos necesita inicialización');
     
     try {
-      // Habilitar foreign keys
-      db.pragma('foreign_keys = ON');
+      // La base de datos no existe o no tiene tablas
+      // Prisma Client creará las tablas automáticamente en la primera conexión
+      console.log('🔨 Creando usuario administrador...');
       
-      // Ejecutar el script completo
-      db.exec(sqlScript);
+      // Hash de la contraseña "admin123"
+      const hashedPassword = await bcrypt.hash('admin123', 10);
       
-      console.log('✅ Base de datos creada exitosamente');
-      console.log('✅ Tablas creadas correctamente');
-      console.log('✅ Usuario admin creado (admin@exmc.com / admin123)');
+      // Crear usuario admin
+      await prisma.user.create({
+        data: {
+          email: 'admin@exmc.com',
+          password: hashedPassword,
+          name: 'Administrador',
+          role: 'ADMIN',
+          isActive: true
+        }
+      });
       
-      db.close();
-    } catch (dbError: any) {
-      console.error('❌ Error al ejecutar script SQL:', dbError.message);
-      db.close();
-      throw dbError;
+      console.log('✅ Usuario administrador creado exitosamente');
+      console.log('   📧 Email: admin@exmc.com');
+      console.log('   🔑 Password: admin123');
+      
+      // Crear configuraciones por defecto
+      const configs = [
+        { key: 'business_name', value: 'Mi Negocio' },
+        { key: 'business_address', value: '' },
+        { key: 'business_phone', value: '' },
+        { key: 'business_email', value: '' },
+        { key: 'tax_percentage', value: '21' }
+      ];
+      
+      for (const config of configs) {
+        await prisma.config.create({
+          data: config
+        });
+      }
+      
+      console.log('✅ Configuraciones iniciales creadas');
+      
+      // Verificar que todo se creó correctamente
+      const finalCount = await prisma.user.count();
+      console.log(`✅ Verificación final: ${finalCount} usuario(s) en la base de datos`);
+      
+      await prisma.$disconnect();
+    } catch (createError: any) {
+      console.error('❌ Error al crear datos iniciales:', createError.message);
+      await prisma.$disconnect();
+      throw createError;
     }
-    
-    // Verificar que el archivo de base de datos existe
-    if (fs.existsSync(dbPath)) {
-      const stats = fs.statSync(dbPath);
-      console.log(`✅ Base de datos creada: ${dbPath} (${stats.size} bytes)`);
-    } else {
-      throw new Error('La base de datos no se creó correctamente');
-    }
-    
-  } catch (error: any) {
-    console.error('❌ Error crítico al inicializar base de datos:', error.message);
-    console.error('Stack trace:', error.stack);
-    throw error;
   }
 }
 
@@ -129,10 +124,10 @@ app.use(express.urlencoded({ extended: true }));
 // Rate limiting - Más permisivo en desarrollo
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 en desarrollo, 100 en producción
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000,
   message: 'Demasiadas peticiones desde esta IP, por favor intente más tarde.',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use('/api', limiter);
@@ -149,7 +144,6 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/config', configRoutes);
-// app.use('/api/customer-payments', customerPaymentRoutes); // TODO: Descomentar cuando Prisma Client incluya CustomerPayment
 app.use('/api/stock', stockRoutes);
 
 // Health check and system info
@@ -171,19 +165,17 @@ app.get('/api/health', (_req: Request, res: Response) => {
 if (process.env.NODE_ENV === 'production') {
   // Buscar el frontend en diferentes ubicaciones posibles
   const possiblePaths = [
-    path.join(__dirname, '../../frontend/dist'),           // resources/backend/../frontend/dist
-    path.join(__dirname, '../../../frontend/dist'),        // Si está más arriba
-    path.join(process.cwd(), 'frontend', 'dist'),          // Desde el directorio de trabajo
+    path.join(__dirname, '../../frontend/dist'),
+    path.join(__dirname, '../../../frontend/dist'),
+    path.join(process.cwd(), 'frontend', 'dist'),
   ];
   
   let frontendPath = '';
   for (const p of possiblePaths) {
-    if (require('fs').existsSync(p)) {
+    if (fs.existsSync(p)) {
       frontendPath = p;
       console.log('✅ Frontend encontrado en:', frontendPath);
       break;
-    } else {
-      console.log('❌ Frontend NO encontrado en:', p);
     }
   }
   
@@ -196,55 +188,21 @@ if (process.env.NODE_ENV === 'production') {
       res.sendFile(path.join(frontendPath, 'index.html'));
     });
   } else {
-    console.error('⚠️ Frontend no encontrado en ninguna ubicación');
-    // Si no hay frontend, al menos dar una respuesta en la raíz
+    console.warn('⚠️ Frontend no encontrado en ninguna ubicación');
     app.get('/', (_req: Request, res: Response) => {
       res.json({
         success: true,
         message: 'Sistema EXMC Backend API',
         version: '2.0.0',
-        endpoints: {
-          health: '/api/health',
-          auth: '/api/auth/*',
-          users: '/api/users/*',
-          products: '/api/products/*',
-          sales: '/api/sales/*',
-          dashboard: '/api/dashboard/*'
-        }
-      });
-    });
-    
-    // 404 para rutas no encontradas cuando no hay frontend
-    app.use((_req: Request, res: Response) => {
-      res.status(404).json({
-        success: false,
-        message: 'Endpoint not found',
       });
     });
   }
 } else {
-  // En desarrollo, solo responder en raíz
   app.get('/', (_req: Request, res: Response) => {
     res.json({
       success: true,
       message: 'Sistema EXMC Backend API - Development Mode',
       version: '2.0.0',
-      endpoints: {
-        health: '/api/health',
-        auth: '/api/auth/*',
-        users: '/api/users/*',
-        products: '/api/products/*',
-        sales: '/api/sales/*',
-        dashboard: '/api/dashboard/*'
-      }
-    });
-  });
-  
-  // 404 handler para desarrollo
-  app.use((_req: Request, res: Response) => {
-    res.status(404).json({
-      success: false,
-      message: 'Endpoint not found',
     });
   });
 }

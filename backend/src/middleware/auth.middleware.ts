@@ -12,6 +12,11 @@ export interface AuthRequest extends Request {
     role: string;
     name: string;
   };
+  body: any;
+  params: any;
+  query: any;
+  headers: any;
+  file?: any;
 }
 
 export const authenticate = async (
